@@ -1,0 +1,2072 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Grelik</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: one centered column. Language picker first, then a zigzag path of 1000 squares, quiz opens as a sheet. */
+:root{
+  --bg:#EDF1F8; --surface:#FFFFFF; --ink:#101828; --muted:#566178; --line:#D3DAE7;
+  --accent:#F2491F; --accent-ink:#FFFFFF; --accent-deep:#B93211;
+  --ok:#17894A; --ok-deep:#0F6A37; --ok-ink:#FFFFFF; --ok-soft:#DDF3E7;
+  --bad:#D92D3A; --bad-soft:#FCE3E5; --code:#EEF1F7;
+  --display:'Bricolage Grotesque','Trebuchet MS','Segoe UI',sans-serif;
+  --body:'Figtree','Segoe UI',system-ui,-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0B101B; --surface:#161D2D; --ink:#EDF1FA; --muted:#97A3BA; --line:#29344D;
+  --accent:#FF7A59; --accent-ink:#1A0A04; --accent-deep:#C9502F;
+  --ok:#3CCB7F; --ok-deep:#23975B; --ok-ink:#04180C; --ok-soft:#10301F;
+  --bad:#FF6B75; --bad-soft:#3A1519; --code:#0F1524; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0B101B; --surface:#161D2D; --ink:#EDF1FA; --muted:#97A3BA; --line:#29344D;
+  --accent:#FF7A59; --accent-ink:#1A0A04; --accent-deep:#C9502F;
+  --ok:#3CCB7F; --ok-deep:#23975B; --ok-ink:#04180C; --ok-soft:#10301F;
+  --bad:#FF6B75; --bad-soft:#3A1519; --code:#0F1524; color-scheme:dark;}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);min-height:100vh}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:720px;margin:0 auto}
+
+/* ---------- picker ---------- */
+#pick{padding-block:28px 56px}
+.brand{font:800 15px/1 var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 14px}
+#pick h1{font:800 clamp(28px,6.4vw,44px)/1.08 var(--display);margin:0 0 10px;text-wrap:balance;letter-spacing:-.01em}
+#pick .sub{margin:0 0 26px;color:var(--muted);max-width:52ch}
+.langs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.lang{width:100%;text-align:left;background:var(--surface);border:2px solid var(--line);border-bottom-width:5px;border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.lang:hover{border-color:var(--accent)}
+.lang:active{transform:translateY(2px);border-bottom-width:3px}
+.lang b{font:700 16px/1.2 var(--display);overflow-wrap:anywhere}
+.lang span{font:500 12px/1.3 var(--mono);color:var(--muted)}
+
+/* ---------- path ---------- */
+#path{padding-bottom:80px}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;background:var(--bg);border-bottom:2px solid var(--line)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:6}
+.who{min-width:0}
+.who b{display:block;font:800 22px/1.1 var(--display);overflow-wrap:anywhere}
+.who small{color:var(--muted);font-weight:600}
+.gear{flex:none;width:46px;height:46px;border-radius:14px;border:2px solid var(--line);border-bottom-width:5px;background:var(--surface);display:grid;place-items:center}
+.gear svg{width:24px;height:24px;stroke:var(--ink)}
+.menu{position:absolute;right:0;top:calc(100% + 8px);background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:8px;min-width:210px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.menu button{width:100%;text-align:left;border:0;background:none;padding:12px 12px;border-radius:10px;font-weight:700}
+.menu button:hover{background:var(--code)}
+.bar .mwrap{position:relative}
+#levels{display:flex;flex-direction:column;align-items:center;gap:26px;padding-top:34px}
+.lv{display:flex;flex-direction:column;align-items:center;transform:translateX(var(--x));scroll-margin-top:120px}
+.sq{width:96px;height:96px;border-radius:24px;border:0;background:var(--accent);color:var(--accent-ink);box-shadow:0 7px 0 var(--accent-deep);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:transform .08s,box-shadow .08s}
+.sq:active:not(:disabled){transform:translateY(5px);box-shadow:0 2px 0 var(--accent-deep)}
+.sq .num{font:800 32px/1 var(--display);font-variant-numeric:tabular-nums}
+.sq.done{background:var(--ok);color:var(--ok-ink);box-shadow:0 7px 0 var(--ok-deep);cursor:default}
+.sq .ct{font:800 13px/1 var(--display);letter-spacing:.02em}
+.sq .sc{font:700 12px/1 var(--mono);opacity:.9}
+.bubble{display:flex;gap:8px;margin-bottom:16px;background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:8px;position:relative}
+.bubble::after{content:"";position:absolute;left:50%;bottom:-9px;width:14px;height:14px;background:var(--surface);border-right:2px solid var(--line);border-bottom:2px solid var(--line);transform:translateX(-50%) rotate(45deg)}
+.b{border:0;border-radius:11px;padding:11px 22px;font:800 15px/1 var(--display);letter-spacing:.03em;text-transform:uppercase;min-width:92px}
+.b.go{background:var(--accent);color:var(--accent-ink)}
+.b.skip{background:var(--code);color:var(--ink)}
+
+/* ---------- quiz sheet ---------- */
+.overlay{position:fixed;inset:0;z-index:20;background:rgba(8,12,22,.62);display:flex;align-items:flex-end;justify-content:center;
+  padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+.sheet{background:var(--bg);width:100%;max-width:680px;max-height:100%;height:min(100%,760px);border-radius:26px 26px 0 0;display:flex;flex-direction:column;overflow:hidden;animation:rise .22s ease-out;
+  padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (min-width:720px){.overlay{align-items:center;padding:24px}.sheet{border-radius:26px;height:min(100%,720px)}}
+@keyframes rise{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+.qtop{display:flex;align-items:center;gap:14px;padding:16px 18px 6px}
+.x{flex:none;width:40px;height:40px;border-radius:12px;border:2px solid var(--line);background:var(--surface);display:grid;place-items:center;font-size:20px;line-height:1}
+.segs{flex:1;display:grid;grid-template-columns:repeat(10,1fr);gap:4px}
+.segs i{height:10px;border-radius:6px;background:var(--line)}
+.segs i.ok{background:var(--ok)} .segs i.no{background:var(--bad)} .segs i.cur{background:var(--accent)}
+.qmeta{padding:4px 20px 0;font:700 12px/1.3 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.qbody{flex:1;overflow-y:auto;padding:14px 20px 20px;display:flex;flex-direction:column;gap:16px}
+.qtext{font:800 clamp(20px,4.6vw,26px)/1.25 var(--display);white-space:pre-line;overflow-wrap:anywhere;margin:0}
+.opts{display:grid;gap:10px}
+.opt{width:100%;text-align:left;background:var(--surface);border:2px solid var(--line);border-bottom-width:5px;border-radius:14px;padding:14px 16px;font:600 16px/1.35 var(--body);overflow-wrap:anywhere;white-space:pre-wrap}
+.opt.code{font-family:var(--mono);font-size:14px;font-weight:500}
+.opt:hover:not(:disabled){border-color:var(--accent)}
+.opt:disabled{cursor:default}
+.opt.right{border-color:var(--ok);background:var(--ok-soft)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.tf{grid-template-columns:1fr 1fr}
+.tf .opt{text-align:center;font:800 20px/1 var(--display);padding:22px 12px}
+textarea{width:100%;min-height:128px;resize:vertical;font:500 15px/1.5 var(--mono);background:var(--code);color:var(--ink);border:2px solid var(--line);border-radius:14px;padding:14px;tab-size:2}
+textarea:focus{outline:none;border-color:var(--accent)}
+.fb{border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.fb.ok{background:var(--ok-soft);border:2px solid var(--ok)}
+.fb.no{background:var(--bad-soft);border:2px solid var(--bad)}
+.fb h3{margin:0;font:800 18px/1.2 var(--display)}
+.fb p{margin:0}
+.fb small{font:700 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+pre{margin:0;background:var(--code);border-radius:10px;padding:10px 12px;font:500 14px/1.5 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink)}
+.qfoot{padding:12px 20px 18px;border-top:2px solid var(--line);display:flex}
+.cta{flex:1;border:0;border-radius:14px;padding:16px;font:800 16px/1 var(--display);letter-spacing:.04em;text-transform:uppercase;background:var(--accent);color:var(--accent-ink);box-shadow:0 5px 0 var(--accent-deep)}
+.cta:active{transform:translateY(3px);box-shadow:0 2px 0 var(--accent-deep)}
+.cta.ghost{background:var(--surface);color:var(--ink);box-shadow:0 5px 0 var(--line);border:2px solid var(--line)}
+.cta.green{background:var(--ok);color:var(--ok-ink);box-shadow:0 5px 0 var(--ok-deep)}
+.qfoot .row{display:flex;gap:10px;width:100%}
+.res{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:26px 0}
+.res .big{font:800 72px/1 var(--display);font-variant-numeric:tabular-nums}
+.res h2{margin:0;font:800 26px/1.15 var(--display)}
+.res p{margin:0;color:var(--muted);max-width:34ch}
+.lesson{display:flex;flex-direction:column;gap:14px}
+.lesson h2{margin:0;font:800 clamp(24px,5.4vw,32px)/1.12 var(--display);text-wrap:balance}
+.lesson p{margin:0;font-size:17px;line-height:1.6}
+.lcode{margin:0;border-left:5px solid var(--accent);border-radius:6px 14px 14px 6px;padding:14px 16px;font:500 15px/1.6 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;background:var(--code)}
+.llab{font:700 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:4px 0 -6px}
+.parts{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.parts li{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr);gap:6px 14px;align-items:start;background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:10px 12px}
+.parts code{font:700 14px/1.4 var(--mono);background:var(--code);color:var(--ink);border-radius:8px;padding:4px 8px;overflow-wrap:anywhere;max-width:min(46vw,260px)}
+.parts span{font-size:15.5px;line-height:1.5;min-width:0}
+@media (max-width:430px){.parts li{grid-template-columns:1fr}.parts code{max-width:100%}}
+.lout{background:var(--ok-soft);border:2px solid var(--ok);border-radius:14px;padding:12px 14px}
+.lout small{display:block;font:700 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.lout pre{background:transparent;padding:0;font-size:15px}
+.ltip{display:flex;gap:10px;background:var(--surface);border:2px dashed var(--accent);border-radius:14px;padding:12px 14px;font-size:15.5px;line-height:1.5}
+.ltip b{color:var(--accent);font:800 13px/1.6 var(--mono);letter-spacing:.06em;text-transform:uppercase;flex:none}
+.tipq{font-size:14px;color:var(--muted);margin:-6px 0 0}
+.review{display:flex;flex-direction:column;gap:12px}
+.rv{border:2px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--surface);display:flex;flex-direction:column;gap:8px}
+.rv.ok{border-color:var(--ok)}.rv.no{border-color:var(--bad)}
+.rvh{display:flex;justify-content:space-between;gap:10px;font:700 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.rvn{color:var(--muted)}.rv.ok .rvs{color:var(--ok)}.rv.no .rvs{color:var(--bad)}
+.rvq{margin:0;font:700 16px/1.4 var(--body);white-space:pre-line;overflow-wrap:anywhere}
+.rvl{font:700 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+.rva{margin:0;background:var(--code);border-radius:10px;padding:9px 11px;font:500 14px/1.5 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere}
+.rv.no .rva{background:var(--bad-soft)}.rv .rva.good{background:var(--ok-soft)}
+.qfoot .row.tri .cta{padding:16px 6px;font-size:14px;letter-spacing:.02em;min-width:0}
+.menu button + button{margin-top:2px}
+#bgimg{position:fixed;inset:0;z-index:-1;display:none;background-size:cover;background-position:center;background-repeat:no-repeat}
+#bgimg::after{content:"";position:absolute;inset:0;background:var(--bg);opacity:.58}
+body.hasbg #bgimg{display:block}
+body.hasbg .bar{background:color-mix(in srgb,var(--bg) 78%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+body.hasbg #pick .hd{background:color-mix(in srgb,var(--surface) 84%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-radius:20px;padding:20px 22px;margin-bottom:22px}
+#pick .hd{margin-bottom:0}
+body.hasbg #pick .hd .sub{margin-bottom:0}
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:40;background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:14px;font:700 15px/1.3 var(--body);max-width:min(92vw,420px);text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.pop{animation:pop .3s ease-out}
+@keyframes pop{0%{transform:scale(.97)}50%{transform:scale(1.02)}100%{transform:scale(1)}}
+.padsheet{height:min(100%,780px)}
+.padtitle{flex:1;font:800 20px/1.2 var(--display);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.padbody{flex:1;overflow-y:auto;padding:12px 20px 20px;display:flex;flex-direction:column;gap:14px}
+.padhint{margin:0;color:var(--muted);font-size:15.5px}
+.plist{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.pitem{display:flex;gap:8px;align-items:stretch}
+.popen{flex:1;min-width:0;text-align:left;background:var(--surface);border:2px solid var(--line);border-bottom-width:5px;border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.popen:hover{border-color:var(--accent)}
+.popen b{font:800 17px/1.25 var(--display);overflow-wrap:anywhere}
+.popen span{font:500 12px/1.4 var(--mono);color:var(--muted)}
+.pdel{flex:none;border:2px solid var(--line);background:var(--surface);border-radius:14px;padding:0 14px;font:800 13px/1 var(--display);letter-spacing:.03em;text-transform:uppercase}
+.pdel.sure{background:var(--bad);border-color:var(--bad);color:#fff}
+.pform{display:flex;flex-direction:column;gap:10px;background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:14px}
+.pform label{font:700 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.pform input,.pform select,.pname{width:100%;font:600 16px/1.3 var(--body);background:var(--code);color:var(--ink);border:2px solid var(--line);border-radius:12px;padding:12px 14px}
+.pform input:focus,.pform select:focus,.pname:focus{outline:none;border-color:var(--accent)}
+.perr{color:var(--bad);font-weight:700;margin:0;font-size:14.5px}
+.pbar{display:flex;gap:8px;align-items:center}
+.pbar .pname{flex:1;min-width:0;font-weight:800;font-family:var(--display);font-size:17px}
+.plang{flex:none;font:700 12px/1 var(--mono);background:var(--code);border-radius:10px;padding:10px 10px;color:var(--muted)}
+.ed{display:flex;border:2px solid var(--line);border-radius:14px;background:var(--code);overflow:hidden;min-height:260px;flex:1}
+.gut{flex:none;margin:0;padding:14px 8px 14px 10px;background:transparent;color:var(--muted);font:500 14px/21px var(--mono);text-align:right;overflow:hidden;user-select:none;white-space:pre;border-radius:0;min-width:38px}
+.ed textarea{flex:1;border:0;border-radius:0;min-height:0;resize:none;background:transparent;font:500 14px/21px var(--mono);padding:14px 12px 14px 6px;white-space:pre;overflow:auto;overflow-wrap:normal}
+.ed textarea:focus{outline:none}
+.ed:focus-within{border-color:var(--accent)}
+.runov{z-index:30;align-items:center;padding:16px}
+.runbox{background:var(--bg);width:100%;max-width:560px;max-height:100%;overflow-y:auto;border-radius:22px;padding:16px 18px 18px;display:flex;flex-direction:column;gap:12px;animation:rise .22s ease-out}
+.runbox h2{margin:0;font:800 20px/1.2 var(--display)}
+.rcmd{font:600 13px/1.4 var(--mono);background:var(--code);border-radius:10px;padding:9px 11px;overflow-wrap:anywhere}
+.rcmd i{font-style:normal;color:var(--muted)}
+.pc{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.pcb{border:2px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 4px 8px;text-align:center;font:800 12px/1.2 var(--display);transition:background .15s,border-color .15s,transform .15s}
+.pcb svg{display:block;margin:0 auto 4px;width:26px;height:26px;stroke:var(--ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pcb small{display:block;font:500 10px/1.2 var(--mono);color:var(--muted);margin-top:2px}
+.pcb.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--surface));transform:translateY(-2px)}
+.rsteps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.rsteps li{display:flex;gap:10px;background:var(--surface);border:2px solid var(--line);border-radius:12px;padding:8px 10px;font-size:15px;line-height:1.4;animation:pop .3s ease-out}
+.rsteps li b{flex:none;font:700 11px/1.8 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--accent);min-width:58px}
+.rsteps li.cur{border-color:var(--accent)}
+.rscreen{background:#0d1117;color:#d7f7df;border-radius:12px;padding:10px 12px;font:500 14px/1.5 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;min-height:48px}
+.rscreen small{display:block;font:700 10px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:#7d8a9c;margin-bottom:6px}
+.rscreen.page{background:#fff;color:#111;font-family:var(--body)}
+.rmem{width:100%;border-collapse:collapse;font:500 13px/1.4 var(--mono)}
+.rmem th,.rmem td{border:2px solid var(--line);padding:5px 8px;text-align:left}
+.rmem th{background:var(--code);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.rsum{background:var(--ok-soft);border:2px solid var(--ok);border-radius:12px;padding:10px 12px;font-size:15px}
+.rsum b{display:block;font:800 13px/1.3 var(--display);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.rsum ul{margin:0;padding-left:18px}
+.rwarn{background:var(--surface);border:2px dashed var(--accent);border-radius:12px;padding:10px 12px;font-size:14.5px}
+.rwarn b{color:var(--accent)}
+.rnote{margin:0;color:var(--muted);font-size:13.5px}
+.rrow{display:flex;gap:10px}
+.rrow .cta{padding:14px 8px;font-size:14px}
+.runbox>*{flex-shrink:0}
+
+.stg{width:100%;text-align:center;background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:14px 16px;margin:10px 0 4px}
+.stg b{display:block;font:800 20px/1.2 var(--display)}
+.stg span{display:block;font:700 12px/1.4 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-top:2px}
+.stg p{margin:6px 0 0;color:var(--muted);font-size:15px}
+.lstage{background:var(--surface);border:2px solid var(--accent);border-radius:14px;padding:12px 14px}
+.lstage small{display:block;font:700 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.lstage p{margin:0;font-size:15.5px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="bgimg" aria-hidden="true"></div>
+<input type="file" id="bgfile" accept="image/*" hidden>
+<div id="toast" role="status" hidden></div>
+
+<section id="pick" hidden>
+  <div class="wrap">
+    <div class="hd">
+    <p class="brand">Grelik</p>
+    <h1>Choose the language of coding you want to learn</h1>
+    <p class="sub">Free, and made for complete beginners. Every level starts with a short lesson that explains the code piece by piece. Then come 10 fun quizzes: true or false, multiple choice, and code you write yourself.</p>
+    </div>
+    <ul class="langs" id="langs"></ul>
+  </div>
+</section>
+
+<section id="path" hidden>
+  <div class="wrap">
+    <header class="bar">
+      <div class="who"><b id="lname"></b><small id="lprog"></small></div>
+      <div class="mwrap">
+        <button class="gear" id="gear" aria-label="Settings" aria-haspopup="true" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        </button>
+        <div class="menu" id="menu" hidden role="menu"><button id="chg" type="button" role="menuitem">Change language</button><button id="padbtn" type="button" role="menuitem">Codepad</button><button id="sfxbtn" type="button" role="menuitem">Sound effects: On</button><button id="bgbtn" type="button" role="menuitem">Switch background</button><button id="bgreset" type="button" role="menuitem" hidden>Remove background</button></div>
+      </div>
+    </header>
+    <main id="levels" aria-label="Levels"></main>
+  </div>
+</section>
+
+<div class="overlay" id="quiz" hidden role="dialog" aria-modal="true" aria-label="Level quiz">
+  <div class="sheet">
+    <div class="qtop"><button class="x" id="qx" aria-label="Leave level">&times;</button><div class="segs" id="segs"></div></div>
+    <div class="qmeta" id="qmeta"></div>
+    <div class="qbody" id="qbody"></div>
+    <div class="qfoot" id="qfoot"></div>
+  </div>
+</div>
+
+<div class="overlay" id="pad" hidden role="dialog" aria-modal="true" aria-label="Codepad">
+  <div class="sheet padsheet">
+    <div class="qtop"><button class="x" id="padx" type="button" aria-label="Close Codepad">&times;</button><div class="padtitle" id="padtitle">Codepad</div></div>
+    <div class="padbody" id="padbody"></div>
+    <div class="qfoot" id="padfoot"></div>
+  </div>
+</div>
+<div class="overlay runov" id="padrun" hidden role="dialog" aria-modal="true" aria-label="What happens when you run it">
+  <div class="runbox" id="runbox"></div>
+</div>
+
+<script>
+var DIFF=0;
+/* Grelik engine: 50 languages, quiz generator (1000 levels x 10 quizzes), answer checker */
+var LANGS = [
+{n:'Python',ex:'.py',y:1991,by:'Guido van Rossum',ty:'dynamic',use:'AI, data science and automation',say:['print("{t}")'],cs:'#',vr:['{n} = {v}'],lp:'for i in range({n}):',fk:'def'},
+{n:'JavaScript',ex:'.js',y:1995,by:'Brendan Eich',ty:'dynamic',use:'interactive web pages',say:['console.log("{t}");'],cs:'//',vr:['let {n} = {v};','var {n} = {v};','const {n} = {v};'],lp:'for (let i = 0; i < {n}; i++) {',fk:'function'},
+{n:'Java',ex:'.java',y:1995,by:'James Gosling',ty:'static',use:'Android apps and big company systems',say:['System.out.println("{t}");','System.out.print("{t}");'],cs:'//',vr:['int {n} = {v};','var {n} = {v};'],lp:'for (int i = 0; i < {n}; i++) {'},
+{n:'C',ex:'.c',y:1972,by:'Dennis Ritchie',ty:'static',use:'operating systems and embedded devices',say:['printf("{t}\\n");','printf("{t}");','puts("{t}");'],cm:['// {t}','/* {t} */'],vr:['int {n} = {v};'],lp:'for (int i = 0; i < {n}; i++) {'},
+{n:'C++',ex:'.cpp',y:1985,by:'Bjarne Stroustrup',ty:'static',use:'games and high-performance software',say:['std::cout << "{t}" << std::endl;','std::cout << "{t}\\n";','std::cout << "{t}";','cout << "{t}" << endl;'],cs:'//',vr:['int {n} = {v};','auto {n} = {v};'],lp:'for (int i = 0; i < {n}; i++) {'},
+{n:'C#',ex:'.cs',y:2000,by:'Anders Hejlsberg',ty:'static',use:'Windows apps and Unity games',say:['Console.WriteLine("{t}");','Console.Write("{t}");'],cs:'//',vr:['int {n} = {v};','var {n} = {v};'],lp:'for (int i = 0; i < {n}; i++) {'},
+{n:'TypeScript',ex:'.ts',y:2012,by:'Anders Hejlsberg',ty:'static',use:'large JavaScript projects with types',say:['console.log("{t}");'],cs:'//',vr:['let {n}: number = {v};','let {n} = {v};','const {n}: number = {v};','const {n} = {v};'],lp:'for (let i = 0; i < {n}; i++) {',fk:'function'},
+{n:'Go',ex:'.go',y:2009,by:'Robert Griesemer, Rob Pike and Ken Thompson',ty:'static',use:'cloud servers and network tools',say:['fmt.Println("{t}")','fmt.Print("{t}")'],cs:'//',vr:['{n} := {v}','var {n} = {v}'],lp:'for i := 0; i < {n}; i++ {',fk:'func'},
+{n:'Rust',ex:'.rs',y:2010,by:'Graydon Hoare',ty:'static',use:'safe, fast systems programming',say:['println!("{t}");','print!("{t}");'],cs:'//',vr:['let {n} = {v};','let mut {n} = {v};'],lp:'for i in 0..{n} {',fk:'fn'},
+{n:'Swift',ex:'.swift',y:2014,by:'Chris Lattner',ty:'static',use:'iPhone and Mac apps',say:['print("{t}")'],cs:'//',vr:['var {n} = {v}','let {n} = {v}'],lp:'for i in 0..<{n} {',fk:'func'},
+{n:'Kotlin',ex:'.kt',y:2011,by:'JetBrains',ty:'static',use:'modern Android apps',say:['println("{t}")','print("{t}")'],cs:'//',vr:['var {n} = {v}','val {n} = {v}'],lp:'for (i in 0 until {n}) {',fk:'fun'},
+{n:'PHP',ex:'.php',y:1995,by:'Rasmus Lerdorf',ty:'dynamic',use:'server-side websites',say:['echo "{t}";','print "{t}";'],cm:['// {t}','# {t}'],vr:['${n} = {v};'],lp:'for ($i = 0; $i < {n}; $i++) {',fk:'function'},
+{n:'Ruby',ex:'.rb',y:1995,by:'Yukihiro Matsumoto',ty:'dynamic',use:'web apps built with Rails',say:['puts "{t}"','puts("{t}")','print "{t}"'],cs:'#',vr:['{n} = {v}'],lp:'{n}.times do |i|',fk:'def'},
+{n:'Dart',ex:'.dart',y:2011,by:'Lars Bak and Kasper Lund',ty:'static',use:'cross-platform apps with Flutter',say:["print('{t}');"],cs:'//',vr:['var {n} = {v};','int {n} = {v};','final {n} = {v};'],lp:'for (var i = 0; i < {n}; i++) {'},
+{n:'R',ex:'.R',y:1993,by:'Ross Ihaka and Robert Gentleman',ty:'dynamic',use:'statistics and data analysis',say:['print("{t}")','cat("{t}\\n")'],cs:'#',vr:['{n} <- {v}','{n} = {v}'],lp:'for (i in 1:{n}) {',fk:'function'},
+{n:'MATLAB',ex:'.m',y:1984,by:'Cleve Moler',ty:'dynamic',use:'math, engineering and simulation',say:["disp('{t}')","disp('{t}');"],cs:'%',vr:['{n} = {v};','{n} = {v}'],lp:'for i = 1:{n}',fk:'function'},
+{n:'Scala',ex:'.scala',y:2004,by:'Martin Odersky',ty:'static',use:'big data and backend systems',say:['println("{t}")','print("{t}")'],cs:'//',vr:['val {n} = {v}','var {n} = {v}'],lp:'for (i <- 0 until {n}) {',fk:'def'},
+{n:'Perl',ex:'.pl',y:1987,by:'Larry Wall',ty:'dynamic',use:'text processing and old-school scripting',say:['print "{t}\\n";','print "{t}";','print("{t}\\n");'],cs:'#',vr:['my ${n} = {v};'],lp:'for my $i (1..{n}) {',fk:'sub'},
+{n:'Lua',ex:'.lua',y:1993,by:'Roberto Ierusalimschy and colleagues',ty:'dynamic',use:'game scripting and embedded scripting',say:['print("{t}")','print "{t}"'],cs:'--',vr:['local {n} = {v}','{n} = {v}'],lp:'for i = 1, {n} do',fk:'function'},
+{n:'Haskell',ex:'.hs',y:1990,by:'a committee of researchers',ty:'static',use:'pure functional programming and research',say:['putStrLn "{t}"','putStrLn("{t}")'],cs:'--',vr:['let {n} = {v}'],lp:'forM_ [1..{n}] $ \\i -> do'},
+{n:'Elixir',ex:'.ex',y:2012,by:'José Valim',ty:'dynamic',use:'real-time, fault-tolerant servers',say:['IO.puts("{t}")','IO.puts "{t}"'],cs:'#',vr:['{n} = {v}'],lp:'Enum.each(1..{n}, fn i ->',fk:'def'},
+{n:'Julia',ex:'.jl',y:2012,by:'Jeff Bezanson, Stefan Karpinski, Viral Shah and Alan Edelman',ty:'dynamic',use:'fast scientific computing',say:['println("{t}")','print("{t}")'],cs:'#',vr:['{n} = {v}'],lp:'for i in 1:{n}',fk:'function'},
+{n:'Bash',ex:'.sh',y:1989,by:'Brian Fox',use:'shell scripts and system automation',say:['echo "{t}"'],cs:'#',vr:['{n}={v}'],lp:'for i in $(seq 1 {n}); do',fk:'function'},
+{n:'SQL',ex:'.sql',y:1974,by:'Donald Chamberlin and Raymond Boyce',use:'talking to databases',say:["SELECT '{t}';"],sv:'selects',cs:'--',vr:['SET @{n} = {v};'],vp:'sets the user variable @{n} to {v}',fk:'CREATE FUNCTION'},
+{n:'HTML',ex:'.html',y:1991,by:'Tim Berners-Lee',use:'the structure of web pages',say:['<p>{t}</p>'],sv:'creates a paragraph with',cm:['<!-- {t} -->']},
+{n:'CSS',ex:'.css',y:1996,by:'Håkon Wium Lie',use:'styling web pages',say:['content: "{t}";'],sv:'sets the content property to',cm:['/* {t} */'],vr:['--{n}: {v};'],vp:'sets the custom property --{n} to {v}'},
+{n:'Objective-C',ex:'.m',y:1984,by:'Brad Cox and Tom Love',use:'older iPhone and Mac apps',say:['NSLog(@"{t}");'],cs:'//',vr:['int {n} = {v};'],lp:'for (int i = 0; i < {n}; i++) {'},
+{n:'Groovy',ex:'.groovy',y:2003,by:'James Strachan',ty:'dynamic',use:'scripting on the Java platform',say:['println "{t}"','println("{t}")'],cs:'//',vr:['def {n} = {v}','int {n} = {v}','var {n} = {v}'],lp:'{n}.times {',fk:'def'},
+{n:'Clojure',ex:'.clj',y:2007,by:'Rich Hickey',ty:'dynamic',use:'functional programming on the Java platform',say:['(println "{t}")'],cm:[';; {t}','; {t}'],vr:['(def {n} {v})'],lp:'(dotimes [i {n}]',fk:'defn'},
+{n:'F#',ex:'.fs',y:2005,by:'Don Syme',ty:'static',use:'functional programming on .NET',say:['printfn "{t}"'],cs:'//',vr:['let {n} = {v}','let mutable {n} = {v}'],lp:'for i in 1 .. {n} do'},
+{n:'OCaml',ex:'.ml',y:1996,by:'Xavier Leroy and colleagues',ty:'static',use:'compilers and formal tools',say:['print_endline "{t}"'],cm:['(* {t} *)'],vr:['let {n} = {v}'],lp:'for i = 1 to {n} do'},
+{n:'Erlang',ex:'.erl',y:1986,by:'Joe Armstrong',ty:'dynamic',use:'telecom and messaging systems',say:['io:format("{t}~n").','io:format("{t}").'],cs:'%',vr:['{N} = {v}.']},
+{n:'Fortran',ex:'.f90',y:1957,by:'John Backus',ty:'static',use:'weather and physics number crunching',say:['print *, "{t}"','write(*,*) "{t}"'],cs:'!',vr:['integer :: {n} = {v}'],lp:'do i = 1, {n}',fk:'function'},
+{n:'COBOL',ex:'.cob',y:1959,by:'a committee led by CODASYL',ty:'static',use:'banking and government mainframes',say:['DISPLAY "{t}".','DISPLAY "{t}"'],cs:'*>',vr:['01 {U} PIC 99 VALUE {v}.'],lp:'PERFORM {n} TIMES'},
+{n:'Pascal',ex:'.pas',y:1970,by:'Niklaus Wirth',ty:'static',use:'teaching and early desktop software',say:["writeln('{t}');","write('{t}');"],cs:'//',vr:['{n} := {v};'],lp:'for i := 1 to {n} do',fk:'function'},
+{n:'Visual Basic',ex:'.vb',y:1991,by:'Alan Cooper and Microsoft',ty:'static',use:'quick Windows business apps',say:['Console.WriteLine("{t}")','Console.Write("{t}")'],cs:"'",vr:['Dim {n} As Integer = {v}','Dim {n} = {v}'],lp:'For i = 1 To {n}',fk:'Function'},
+{n:'Lisp',ex:'.lisp',y:1958,by:'John McCarthy',ty:'dynamic',use:'AI research and symbolic computing',say:['(print "{t}")','(format t "{t}")'],cs:';',vr:['(setq {n} {v})','(defvar {n} {v})','(defparameter {n} {v})'],lp:'(dotimes (i {n})',fk:'defun'},
+{n:'Scheme',ex:'.scm',y:1975,by:'Guy Steele and Gerald Sussman',ty:'dynamic',use:'teaching and language research',say:['(display "{t}")'],cs:';',vr:['(define {n} {v})'],lp:'(do ((i 0 (+ i 1))) ((= i {n})))',fk:'define'},
+{n:'Prolog',ex:'.pro',y:1972,by:'Alain Colmerauer',ty:'dynamic',use:'logic programming and rules',say:["write('{t}')."],cs:'%',vr:['{N} = {v}.']},
+{n:'Zig',ex:'.zig',y:2016,by:'Andrew Kelley',ty:'static',use:'low-level systems code with simple rules',say:['std.debug.print("{t}\\n", .{});'],cs:'//',vr:['const {n} = {v};','var {n} = {v};'],lp:'for (0..{n}) |i| {',fk:'fn'},
+{n:'Nim',ex:'.nim',y:2008,by:'Andreas Rumpf',ty:'static',use:'fast programs with Python-like syntax',say:['echo "{t}"','echo("{t}")'],cs:'#',vr:['var {n} = {v}','let {n} = {v}','const {n} = {v}'],lp:'for i in 1..{n}:',fk:'proc'},
+{n:'Crystal',ex:'.cr',y:2014,by:'Ary Borenszweig',ty:'static',use:'fast programs with Ruby-like syntax',say:['puts "{t}"','puts("{t}")'],cs:'#',vr:['{n} = {v}'],lp:'{n}.times do |i|',fk:'def'},
+{n:'Racket',ex:'.rkt',y:1995,by:'Matthias Felleisen and the PLT group',ty:'dynamic',use:'building new languages and teaching',say:['(displayln "{t}")','(println "{t}")','(display "{t}")'],cs:';',vr:['(define {n} {v})'],lp:'(for ([i (in-range {n})])',fk:'define'},
+{n:'Elm',ex:'.elm',y:2012,by:'Evan Czaplicki',ty:'static',use:'reliable front-end web apps',say:['Html.text "{t}"','text "{t}"'],sv:'creates',cs:'--',vr:['{n} = {v}']},
+{n:'Ada',ex:'.adb',y:1980,by:'Jean Ichbiah',ty:'static',use:'aircraft, rail and safety-critical systems',say:['Put_Line ("{t}");','Put_Line("{t}");'],cs:'--',vr:['{n} : Integer := {v};'],lp:'for I in 1 .. {n} loop',fk:'function'},
+{n:'D',ex:'.d',y:2001,by:'Walter Bright',ty:'static',use:'systems programming with C-like syntax',say:['writeln("{t}");'],cs:'//',vr:['int {n} = {v};','auto {n} = {v};'],lp:'foreach (i; 0 .. {n}) {'},
+{n:'Tcl',ex:'.tcl',y:1988,by:'John Ousterhout',ty:'dynamic',use:'scripting and tool automation',say:['puts "{t}"'],cs:'#',vr:['set {n} {v}'],lp:'for {set i 0} {$i < {n}} {incr i} {',fk:'proc'},
+{n:'PowerShell',ex:'.ps1',y:2006,by:'Jeffrey Snover',ty:'dynamic',use:'Windows automation',say:['Write-Output "{t}"','Write-Host "{t}"'],cs:'#',vr:['${n} = {v}'],lp:'for ($i = 0; $i -lt {n}; $i++) {',fk:'function'},
+{n:'Smalltalk',ex:'.st',y:1972,by:'Alan Kay and colleagues at Xerox PARC',ty:'dynamic',use:'teaching and object-oriented research',say:["Transcript showCr: '{t}'.","Transcript show: '{t}'."],cm:['"{t}"'],vr:['{n} := {v}.'],lp:'{n} timesRepeat: ['},
+{n:'Mojo',ex:'.mojo',y:2023,by:'Chris Lattner and the Modular team',use:'fast AI code with Python-like syntax',say:['print("{t}")'],cs:'#',vr:['var {n} = {v}','{n} = {v}'],lp:'for i in range({n}):',fk:'fn'}
+];
+LANGS.forEach(function(L){ if(!L.cm) L.cm=[L.cs+' {t}']; });
+
+/* ---------- helpers ---------- */
+function hashStr(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function pick(r,a){return a[Math.floor(r()*a.length)];}
+function ri(r,lo,hi){return lo+Math.floor(r()*(hi-lo+1));}
+function shuffle(r,a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(r()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1);}
+function fillTpl(t,m){var o=t;for(var k in m){o=o.split('{'+k+'}').join(String(m[k]));}return o;}
+function norm2(s){return String(s).replace(/'/g,'"').replace(/\s+/g,'').replace(/[;.]+$/,'');}
+function mc(r,q,correct,wrongs,ordered){
+  var seen={};seen[correct]=1;var w=[];
+  wrongs.forEach(function(x){x=String(x);if(!seen[x]){seen[x]=1;w.push(x);}});
+  var want=DIFF<0.1?2:DIFF<0.45?3:4;
+  w=(ordered?w:shuffle(r,w)).slice(0,Math.max(2,want));
+  var opts=shuffle(r,[String(correct)].concat(w));
+  return {k:'mc',q:q,opts:opts,a:opts.indexOf(String(correct))};
+}
+function nearby(r,val){
+  var c=[val+1,val-1,val+2,val-2,val+3,val-3,val+10,val-10,val*2,val+5];
+  var out=[];c.forEach(function(x){if(x!==val&&out.indexOf(x)<0)out.push(x);});
+  return shuffle(r,out).slice(0,6);
+}
+
+var TEXTS=['Hello','Hello, World!','Grelik','Coding is fun','Bananas','Level up','I can code','Good morning','Rocket','Pixel','Debug me','Ship it','Hi there','Blue sky','Cookie','Robot','Zebra','Magic','Ninja','Sunrise','Pizza time','Keep going','Bug fixed','Moonlight'];
+var NAMES=['score','age','count','apples','level','total','speed','coins','lives','price','height','width','stars','points','items','steps','temp','books','goals','friends'];
+var WORDS=['banana','keyboard','program','coding','algorithm','pixel','function','variable','bug','compile','laptop','python'];
+
+/* ---------- write quizzes ---------- */
+function nameFor(L,n){var tpl=L.vr[0];return tpl.indexOf('{N}')>=0?cap(n):tpl.indexOf('{U}')>=0?n.toUpperCase():n;}
+function sayLine(L,t){return {v:L.say.map(function(s){return fillTpl(s,{t:t});}),must:[t]};}
+function cmtLine(L,t){return {v:L.cm.map(function(s){return fillTpl(s,{t:t});}),must:[t]};}
+function varLine(L,n,v){var nm=nameFor(L,n);return {v:L.vr.map(function(s){return fillTpl(s,{n:n,N:cap(n),U:n.toUpperCase(),v:v});}),must:[String(v),nm]};}
+function varPhrase(L,n,v){var nm=nameFor(L,n);return L.vp?fillTpl(L.vp,{n:nm,v:v}):'stores '+v+' in a variable named '+nm;}
+function writeQuiz0(L,kind,r,tx){
+  var sv=L.sv||'prints';var t1=tx.next(),t2,n,v;
+  if(kind==='say') return {k:'write',q:'Write one line of '+L.n+' that '+sv+' the text “'+t1+'”.',lines:[sayLine(L,t1)]};
+  if(kind==='cmt') return {k:'write',q:'Write a '+L.n+' comment that says “'+t1+'”.',lines:[cmtLine(L,t1)]};
+  if(kind==='var'){n=tx.name();v=ri(r,2,99);return {k:'write',q:'Write one line of '+L.n+' that '+varPhrase(L,n,v)+'.',lines:[varLine(L,n,v)]};}
+  if(kind==='two'){t2=tx.next();return {k:'write',q:'Write two lines of '+L.n+', one after the other.\nLine 1 '+sv+' the text “'+t1+'”.\nLine 2 '+sv+' the text “'+t2+'”.',lines:[sayLine(L,t1),sayLine(L,t2)]};}
+  /* three */
+  t2=tx.next();
+  if(L.vr){n=tx.name();v=ri(r,2,99);
+    return {k:'write',q:'Write three lines of '+L.n+'.\nLine 1 is a comment that says “'+t1+'”.\nLine 2 '+varPhrase(L,n,v)+'.\nLine 3 '+sv+' the text “'+t2+'”.',lines:[cmtLine(L,t1),varLine(L,n,v),sayLine(L,t2)]};}
+  var t3=tx.next();
+  return {k:'write',q:'Write three lines of '+L.n+'.\nLine 1 is a comment that says “'+t1+'”.\nLine 2 '+sv+' the text “'+t2+'”.\nLine 3 '+sv+' the text “'+t3+'”.',lines:[cmtLine(L,t1),sayLine(L,t2),sayLine(L,t3)]};
+}
+function expectedText(q){return q.lines.map(function(l){return l.v[0];}).join('\n');}
+function lineOk(line,ans){var a=ans;for(var i=0;i<line.must.length;i++){if(a.indexOf(line.must[i])<0)return false;}
+  var na=norm2(a);return line.v.some(function(x){return norm2(x)===na;});}
+function checkWrite(q,answer){
+  var ls=String(answer).split(/\r?\n/).map(function(s){return s.trim();}).filter(function(s){return s.length;});
+  if(ls.length!==q.lines.length)return false;
+  for(var i=0;i<ls.length;i++){if(!lineOk(q.lines[i],ls[i]))return false;}
+  return true;
+}
+function hintWrite(q,answer){
+  var ls=String(answer).split(/\r?\n/).map(function(s){return s.trim();}).filter(function(s){return s.length;});
+  if(!ls.length)return 'Type your code in the box first.';
+  if(ls.length!==q.lines.length)return 'This task needs exactly '+q.lines.length+' line'+(q.lines.length>1?'s':'')+'. You wrote '+ls.length+'.';
+  for(var i=0;i<ls.length;i++){
+    var ln=q.lines[i];
+    for(var j=0;j<ln.must.length;j++){if(ls[i].indexOf(ln.must[j])<0){
+      var low=ln.must[j].toLowerCase();
+      if(ls[i].toLowerCase().indexOf(low)>=0)return 'Line '+(i+1)+': check upper and lower case in “'+ln.must[j]+'”.';
+      return 'Line '+(i+1)+' is missing “'+ln.must[j]+'”. Type it exactly as shown in the task.';}}
+    if(!lineOk(ln,ls[i])){
+      if(ln.v.some(function(x){return norm2(x).toLowerCase()===norm2(ls[i]).toLowerCase();}))return 'Line '+(i+1)+' is almost right. Check upper and lower case letters.';
+      return 'Line '+(i+1)+' is close. Compare it with the answer below, one symbol at a time.';}
+  }
+  return 'Compare your code with the answer below.';
+}
+
+/* ---------- language fact quizzes ---------- */
+function others(L){return LANGS.filter(function(x){return x!==L;});}
+function cmtEx(L,t){return fillTpl(L.cm[0],{t:t||'text'});}
+function tfQuiz(L,type,r){
+  var want=r()<0.5,O=others(L),q,a=want,x;
+  if(type==='cmt'){
+    var tt=pick(r,textPool(DIFF));
+    var mine=L.cm.map(function(s){return norm2(fillTpl(s,{t:tt}));});
+    var cand=O.filter(function(o){return mine.indexOf(norm2(cmtEx(o,tt)))<0;});
+    var ex=want?cmtEx(L,tt):cmtEx(pick(r,cand),tt);
+    q='In '+L.n+', a comment can be written like this: '+ex;
+  }else if(type==='say'){
+    var st=pick(r,textPool(DIFF));
+    var okl=O.filter(function(o){return !sayOk(L,sayText(o,st),st);});
+    var sl=want?sayText(L,st):sayText(pick(r,okl),st);
+    q='In '+L.n+', this line shows the text “'+st+'” on the screen: '+sl;
+  }else if(type==='var'){
+    var vn=pick(r,NAMES),vv=ri(r,2,99);
+    var mk=function(o){return fillTpl(o.vr[0],{n:vn,N:cap(vn),U:vn.toUpperCase(),v:vv});};
+    var okv=L.vr.map(function(s){return norm2(fillTpl(s,{n:vn,N:cap(vn),U:vn.toUpperCase(),v:vv}));});
+    var vl=want?mk(L):mk(pick(r,O.filter(function(o){return o.vr&&okv.indexOf(norm2(mk(o)))<0;})));
+    q='In '+L.n+', this line stores '+vv+' in a variable called '+nameFor(L,vn)+': '+vl;
+  }else if(type==='fk'){
+    var f=want?L.fk:pick(r,O.filter(function(o){return o.fk&&o.fk!==L.fk;})).fk;
+    q='In '+L.n+', the keyword “'+f+'” is used to define a function.';
+  }else if(type==='ty'){
+    var s=want?L.ty:(L.ty==='static'?'dynamic':'static');
+    q=L.n+' is a '+s+'ally typed language.';
+  }else if(type==='year'){
+    var span=Math.max(1,Math.round(10-9*DIFF));var Y=want?L.y+ri(r,1,span):L.y-ri(r,0,Math.max(0,span-2));
+    q=L.n+' first appeared before the year '+Y+'.';
+  }else if(type==='creator'){
+    var b=want?L.by:pick(r,O.filter(function(o){return o.by!==L.by;})).by;
+    q=L.n+' was created by '+b+'.';
+  }else if(type==='use'){
+    var u=want?L.use:pick(r,O.filter(function(o){return o.use!==L.use;})).use;
+    q=L.n+' is mostly used for '+u+'.';
+  }else{
+    var e=want?L.ex:pick(r,O.filter(function(o){return o.ex!==L.ex;})).ex;
+    q='Files written in '+L.n+' often end in '+e+'.';
+  }
+  return {k:'tf',q:q,a:a};
+}
+function sayOk(L,line,t){return L.say.some(function(s){return norm2(fillTpl(s,{t:t}))===norm2(line);});}
+function mcQuiz(L,type,r){
+  var O=others(L),t,n,v;
+  if(type==='year'){
+    var ys=[],sp=Math.max(3,Math.round(12-9*DIFF));for(var d=-sp;d<=sp;d++){if(d!==0)ys.push(L.y+d);}
+    return mc(r,'In which year did '+L.n+' first appear?',L.y,shuffle(r,ys).slice(0,3));
+  }
+  if(type==='creator')return mc(r,'Who created '+L.n+'?',L.by,O.map(function(o){return o.by;}));
+  if(type==='use')return mc(r,'What is '+L.n+' mostly used for?',L.use,O.map(function(o){return o.use;}));
+  if(type==='ext')return mc(r,'Which file ending is common for '+L.n+' files?',L.ex,O.map(function(o){return o.ex;}));
+  if(type==='fk')return mc(r,'Which keyword defines a function in '+L.n+'?',L.fk,O.filter(function(o){return o.fk;}).map(function(o){return o.fk;}));
+  if(type==='hello'){t=pick(r,textPool(DIFF));var c=fillTpl(L.say[0],{t:t});
+    return mc(r,'Which line shows the text “'+t+'” in '+L.n+'?',c,O.map(function(o){return fillTpl(o.say[0],{t:t});}).filter(function(x){return !sayOk(L,x,t);}));}
+  if(type==='cmt'){t=pick(r,textPool(DIFF));var cm=fillTpl(L.cm[0],{t:t});
+    var valid=L.cm.map(function(s){return norm2(fillTpl(s,{t:t}));});
+    return mc(r,'Which line is a comment that says “'+t+'” in '+L.n+'?',cm,O.map(function(o){return fillTpl(o.cm[0],{t:t});}).filter(function(x){return valid.indexOf(norm2(x))<0;}));}
+  if(type==='var'){n=pick(r,NAMES);v=ri(r,2,99);var nm=nameFor(L,n);
+    var mk=function(o){return fillTpl(o.vr[0],{n:n,N:cap(n),U:n.toUpperCase(),v:v});};
+    var vv=L.vr.map(function(s){return norm2(fillTpl(s,{n:n,N:cap(n),U:n.toUpperCase(),v:v}));});
+    return mc(r,'Which line '+varPhrase(L,n,v)+' in '+L.n+'?',mk(L),O.filter(function(o){return o.vr;}).map(mk).filter(function(x){return vv.indexOf(norm2(x))<0;}));}
+  /* loop */
+  n=ri(r,3,9);var lc=fillTpl(L.lp,{n:n});
+  return mc(r,'Which line starts a loop that repeats '+n+' times in '+L.n+'?',lc,O.filter(function(o){return o.lp;}).map(function(o){return fillTpl(o.lp,{n:n});}));
+}
+
+/* ---------- generic coding quizzes ---------- */
+var CB=[[
+ {k:'tf',q:'A variable is a named place that stores a value.',a:true},
+ {k:'tf',q:'A computer understands human sentences exactly the way people mean them.',a:false},
+ {k:'tf',q:'A bug is a mistake in a program.',a:true},
+ {k:'tf',q:'Comments are instructions the computer must run.',a:false},
+ {k:'tf',q:'A loop repeats code.',a:true},
+ {k:'tf',q:'An if statement lets a program choose between actions.',a:true},
+ {k:'tf',q:'Debugging means finding and fixing bugs.',a:true},
+ {k:'tf',q:'A string is text, such as a word or a sentence.',a:true},
+ {k:'tf',q:'A Boolean value can be true or false.',a:true},
+ {k:'tf',q:'A program is a list of instructions.',a:true},
+ {k:'tf',q:'Saving a file and running a program mean the same thing.',a:false},
+ {k:'mc',q:'What is a program?',o:['A list of instructions for a computer','A kind of keyboard','A type of screen','A web address']},
+ {k:'mc',q:'What does a function do?',o:['Groups code you can reuse','Deletes your files','Makes the screen brighter','Turns the computer off']},
+ {k:'mc',q:'What is an algorithm?',o:['Step-by-step instructions to solve a problem','A type of virus','A computer part','The name of a language']},
+ {k:'mc',q:'How many values can a Boolean have?',o:['2','3','10','As many as you like']},
+ {k:'mc',q:'What does it mean to run a program?',o:['The computer carries out its instructions','You delete it','You print it','You rename it']},
+ {k:'mc',q:'What do we call the text a programmer writes?',o:['Source code','Hardware','Wallpaper','Firmware']}
+],[
+ {k:'tf',q:'Most languages count the first item of a list as index 0.',a:true},
+ {k:'tf',q:'A function can return a value.',a:true},
+ {k:'tf',q:'An infinite loop is a loop that never stops on its own.',a:true},
+ {k:'tf',q:'Compiling turns source code into something a machine can run.',a:true},
+ {k:'tf',q:'In every language, a variable can never change after you create it.',a:false},
+ {k:'tf',q:'Git is a tool for tracking changes to code.',a:true},
+ {k:'tf',q:'An API lets programs talk to each other.',a:true},
+ {k:'tf',q:'Recursion means a function calls itself.',a:true},
+ {k:'tf',q:'A compiler and an interpreter work in exactly the same way.',a:false},
+ {k:'mc',q:'Which structure is last in, first out?',o:['Stack','Queue','Tree','Graph']},
+ {k:'mc',q:'Which structure is first in, first out?',o:['Queue','Stack','Set','Heap']},
+ {k:'mc',q:'What does API stand for?',o:['Application Programming Interface','Applied Program Index','Automatic Page Input','Advanced Python Interpreter']},
+ {k:'mc',q:'How many bits are in a byte?',o:['8','4','16','10']},
+ {k:'mc',q:'What is a parameter?',o:['A value a function receives','A kind of error','A file type','A loop']},
+ {k:'mc',q:'What is a syntax error?',o:['Code that breaks the grammar rules of the language','A broken keyboard','A slow computer','A wrong password']},
+ {k:'mc',q:'What does git commit do?',o:['Saves a snapshot of your changes','Deletes the project','Opens a website','Updates your computer']}
+],[
+ {k:'mc',q:'What is the time complexity of binary search?',o:['O(log n)','O(n)','O(n²)','O(1)']},
+ {k:'mc',q:'Looping through every item of a list once is usually which complexity?',o:['O(n)','O(log n)','O(1)','O(2ⁿ)']},
+ {k:'mc',q:'A function that always returns the same output for the same input and changes nothing else is called…',o:['Pure','Static','Abstract','Volatile']},
+ {k:'mc',q:'What does immutable mean?',o:['Cannot be changed after creation','Runs very fast','Is stored on disk','Is written in binary']},
+ {k:'mc',q:'Which structure is great for fast lookup by key?',o:['Hash table','Linked list','Stack','Queue']},
+ {k:'tf',q:'Recursion needs a base case to stop.',a:true},
+ {k:'tf',q:'A race condition happens when the timing of tasks changes the result.',a:true},
+ {k:'tf',q:'Big-O notation measures the exact seconds a program takes.',a:false},
+ {k:'tf',q:'Dereferencing a null pointer can crash a program in many languages.',a:true},
+ {k:'tf',q:'Sorting a large array always takes O(1) time.',a:false},
+ {k:'mc',q:'What is a deadlock?',o:['Tasks waiting on each other forever','A locked screen','A deleted file','A slow network']},
+ {k:'mc',q:'What is SQL injection?',o:['An attack that sneaks database commands into input','A database backup','A very fast query','A kind of join']},
+ {k:'mc',q:'What does a type checker do?',o:['Catches mismatched types before the program runs','Draws shapes','Speeds up the network','Prints errors in color']},
+ {k:'mc',q:'Two nested loops over n items each usually cost…',o:['O(n²)','O(n)','O(log n)','O(1)']},
+ {k:'mc',q:'Which paradigm builds programs from objects that hold data and methods?',o:['Object-oriented','Logic','Assembly','Declarative styling']},
+ {k:'mc',q:'Which paradigm builds programs from functions and avoids shared mutable state?',o:['Functional','Imperative only','Procedural only','Event-driven only']}
+]];
+function conceptQuiz(r,tier){
+  var u=r(),t=tier;
+  if(tier===0&&u>0.85)t=1;
+  if(tier===1){t=u<0.15?0:u<0.85?1:2;}
+  if(tier===2&&u<0.4)t=1;
+  var it=pick(r,CB[t]);
+  if(it.k==='tf')return {k:'tf',q:it.q,a:it.a};
+  return mc(r,it.q,it.o[0],it.o.slice(1));
+}
+function numQuiz(r,tier,force){
+  var pools=[['arith','strlen','index','bool','bin','mod','chain'],['arith','mod','bin','index','bool','loop','chain','hex'],['arith','bin','bool','loop','mod','hex','chain','strlen']];
+  var k=force||pick(r,pools[tier]),a,b,c,d,val,w,q;
+  if(k==='arith'){
+    if(tier===0){a=ri(r,2,12);b=ri(r,2,12);val=a+b;q='What is '+a+' + '+b+'?';w=[a-b,val+1,val-1,a*b];}
+    else if(tier===1){a=ri(r,2,9);b=ri(r,2,9);c=ri(r,2,6);val=a+b*c;q='What is '+a+' + '+b+' * '+c+'?';w=[(a+b)*c].concat(nearby(r,val));}
+    else{a=ri(r,2,9);b=ri(r,2,9);c=ri(r,2,7);d=ri(r,1,12);val=(a+b)*c-d;q='What is ('+a+' + '+b+') * '+c+' - '+d+'?';w=[a+b*c-d,(a+b)*(c-d)].concat(nearby(r,val));}
+    return mc(r,q,val,w);
+  }
+  if(k==='strlen'){var wd=pick(r,WORDS);if(tier===2){wd=pick(r,WORDS)+' '+pick(r,WORDS);}
+    return mc(r,'How many characters are in the text “'+wd+'”? (Spaces count.)',wd.length,nearby(r,wd.length));}
+  if(k==='index'){var len=ri(r,4,7),arr=[];while(arr.length<len){var x=ri(r,1,99);if(arr.indexOf(x)<0)arr.push(x);}
+    var idx=(tier>=1&&r()<0.5)?len-1:ri(r,0,len-1);
+    var others2=arr.filter(function(_,i){return i!==idx;});
+    return mc(r,'items = ['+arr.join(', ')+']\nCounting from 0, what is items['+idx+']?',arr[idx],others2);}
+  if(k==='bool'){
+    var A=r()<0.5,B=r()<0.5,C=r()<0.5,expr,res;var o1=r()<0.5?'AND':'OR',o2=r()<0.5?'AND':'OR';
+    function ap(x,op,y){return op==='AND'?(x&&y):(x||y);}
+    function s(x){return x?'true':'false';}
+    if(tier===0){expr=s(A)+' '+o1+' '+s(B);res=ap(A,o1,B);}
+    else if(tier===1){expr='('+s(A)+' '+o1+' '+s(B)+') '+o2+' '+s(C);res=ap(ap(A,o1,B),o2,C);}
+    else{expr='NOT ('+s(A)+' '+o1+' '+s(B)+') '+o2+' '+s(C);res=ap(!ap(A,o1,B),o2,C);}
+    var opts=['true','false'];return {k:'mc',q:'What is the result of: '+expr+'?',opts:opts,a:res?0:1};
+  }
+  if(k==='bin'){var n=tier===0?ri(r,1,15):tier===1?ri(r,16,63):ri(r,64,255);
+    return mc(r,'What is the number '+n+' written in binary?',n.toString(2),nearby(r,n).map(function(x){return x>0?x.toString(2):'0';}));}
+  if(k==='mod'){a=tier===0?ri(r,5,20):ri(r,20,99);b=tier===0?ri(r,2,5):ri(r,3,9);val=a%b;
+    return mc(r,'What is '+a+' % '+b+'? (The % sign gives the remainder after division.)',val,[Math.floor(a/b),val+1,val+2,val+3,b]);}
+  if(k==='chain'){a=ri(r,1,9);b=ri(r,1,9);c=ri(r,2,5);val=(a+b)*c;
+    return mc(r,'x = '+a+'\nx = x + '+b+'\nx = x * '+c+'\nWhat is x now?',val,[a+b*c].concat(nearby(r,val)));}
+  if(k==='loop'){var nn=tier===1?ri(r,3,6):ri(r,6,12);val=nn*(nn+1)/2;
+    return mc(r,'total = 0\nfor i from 1 to '+nn+':\n    total = total + i\nWhat is total at the end?',val,[nn*nn,nn*(nn-1)/2,val+nn].concat(nearby(r,val)));}
+  if(k==='ifeval'){var th=ri(r,10,18),sc=ri(r,5,24),hi=th+ri(r,3,6);
+    if(tier===0){return {k:'mc',q:'score = '+sc+'\nif score >= '+th+':\n    show "pass"\nelse:\n    show "try again"\nWhat does the program show?',opts:['pass','try again'],a:sc>=th?0:1};}
+    return {k:'mc',q:'score = '+sc+'\nif score >= '+th+' and score < '+hi+':\n    show "pass"\nelse:\n    show "try again"\nWhat does the program show?',opts:['pass','try again'],a:(sc>=th&&sc<hi)?0:1};}
+  if(k==='fnapply'){var xx=ri(r,2,9),yy=ri(r,2,9);
+    if(tier===0)return mc(r,'function double(x):\n    return x * 2\nWhat is double('+xx+')?',xx*2,[xx+2,xx*xx,xx+xx+1,xx]);
+    if(tier===1)return mc(r,'function add(a, b):\n    return a + b\nWhat is add('+xx+', '+yy+')?',xx+yy,nearby(r,xx+yy).concat([xx*yy]));
+    return mc(r,'function f(a, b):\n    return a * b + 1\nWhat is f('+xx+', '+yy+')?',xx*yy+1,[xx*yy,xx+yy+1,(xx+1)*yy].concat(nearby(r,xx*yy+1)));}
+  if(k==='loopcount'){var lc=ri(r,3,9);
+    if(tier===0)return mc(r,'for i from 1 to '+lc+':\n    show i\nHow many numbers does the loop show?',lc,nearby(r,lc).filter(function(x){return x>0;}));
+    return mc(r,'for i from 1 to '+(lc*2)+' step 2:\n    show i\nHow many numbers does the loop show?',lc,[lc*2,lc+1,lc-1,lc*2-1].filter(function(x){return x>0;}));}
+  /* hex */
+  var h=tier===1?ri(r,10,255):ri(r,256,4095);
+  return mc(r,'What is the decimal value of the hexadecimal number '+h.toString(16).toUpperCase()+'?',h,nearby(r,h));
+}
+/* ---------- explainers: what each piece of code means ---------- */
+var KW=['let','var','const','val','final','def','local','my','set','Dim','auto','define','setq','defvar','defparameter'];
+var TYPEW=['int','Integer','integer','number'];
+function sayText(L,t){return fillTpl(L.say[0],{t:t});}
+function varText(L,n,v){return fillTpl(L.vr[0],{n:n,N:cap(n),U:n.toUpperCase(),v:v});}
+function LITX(L,lit){
+  var s='The text itself. The quote marks tell '+L.n+' “this is text, not a command.” What is inside the quotes is what appears.';
+  if(lit.indexOf('\\n')>=0)s+=' The \\n at the end means “start a new line”.';
+  if(lit.indexOf('~n')>=0)s+=' The ~n at the end means “start a new line”.';
+  if(lit.charAt(0)==='@')s+=' The @ in front is how Objective-C marks a piece of text.';
+  return s;
+}
+var CMDX='The command that shows text on the screen. Think of it as the word “print”.';
+var SX={
+  'C++':function(L,t){return [['std::cout <<','Sends whatever comes next to the screen.'],['"'+t+'"',LITX(L,'"'+t+'"')],['<< std::endl','Moves to a new line afterwards.'],[';','Ends the instruction, like a full stop.']];},
+  'Zig':function(L,t){return [['std.debug.print(','The command that shows text on the screen.'],['"'+t+'\\n"','The text. The \\n at the end means “start a new line”.'],[', .{}','Zig wants a list of extra values here. Ours is empty, so we write .{}'],[');','Closes the brackets and ends the instruction.']];},
+  'HTML':function(L,t){return [['<p>','Opening tag: “a paragraph starts here”.'],[t,'The words people will see on the page.'],['</p>','Closing tag: “the paragraph ends here”.']];},
+  'CSS':function(L,t){return [['content:','A style rule that sets some text to show. It lives inside a style block.'],['"'+t+'"',LITX(L,'"'+t+'"')],[';','Ends the rule.']];},
+  'SQL':function(L,t){return [['SELECT','Asks the database to give something back.'],["'"+t+"'",'The text to give back. SQL uses single quotes for text.'],[';','Ends the command.']];}
+};
+function explainSay(L,t){
+  if(SX[L.n])return SX[L.n](L,t);
+  var line=sayText(L,t),m=/@?"[^"]*"|@?'[^']*'/.exec(line);
+  if(!m)return [[line,'Write exactly this line.']];
+  var before=line.slice(0,m.index).replace(/\s+$/,''),lit=m[0],after=line.slice(m.index+lit.length),parts=[];
+  if(before){
+    if(/\($/.test(before)&&before.length>1&&before.charAt(0)!=='('){
+      parts.push([before.slice(0,-1).replace(/\s+$/,''),CMDX]);
+      parts.push(['(','Opens the brackets that hold what you want to show.']);
+    }else parts.push([before,CMDX]);
+  }
+  parts.push([lit,LITX(L,lit)]);
+  var a=after;
+  if(/^\s*\)/.test(a)){parts.push([')','Closes the brackets.']);a=a.replace(/^\s*\)/,'');}
+  a=a.trim();
+  if(a===';')parts.push([';','Ends the instruction, like a full stop at the end of a sentence.']);
+  else if(a==='.')parts.push(['.','Ends the instruction, like a full stop at the end of a sentence.']);
+  else if(a)parts.push([a,'Finishing touch that '+L.n+' needs here.']);
+  return parts;
+}
+function cmdName(L){return explainSay(L,'x')[0][0];}
+function symbolParts(L,t){
+  var seg=L.cm[0].split('{t}'),pre=seg[0].trim(),post=(seg[1]||'').trim(),p=[];
+  p.push([pre,post?'Starts the comment.':'The comment marker. Everything after it on this line is ignored.']);
+  p.push([t,'Your note, written in plain words.']);
+  if(post)p.push([post,'Ends the comment.']);
+  return p;
+}
+function explainVar(L,n,v){
+  var nm=nameFor(L,n);
+  if(L.n==='CSS')return [['--'+n,'The name. Custom values in CSS start with two dashes.'],[':','Separates the name from its value.'],[String(v),'The value being stored.'],[';','Ends the rule.']];
+  if(L.n==='COBOL')return [['01','A level number. It starts a new piece of data.'],[nm,'The name, chosen by you.'],['PIC 99','Says the value is a number with up to two digits.'],['VALUE '+v,'The value the box starts with.'],['.','Ends the instruction.']];
+  var line=varText(L,n,v),toks=line.match(/\d+|[A-Za-z_][A-Za-z0-9_]*|:=|<-|[^\s\w]/g)||[],out=[];
+  for(var i=0;i<toks.length;i++){
+    var tk=toks[i],mean,last=(i===toks.length-1);
+    if(tk===':'&&toks[i+1]===':'){tk='::';i++;mean='Separates the type from the name.';}
+    else if(tk===nm)mean='The name of the variable. You choose it. Here it is “'+nm+'”.';
+    else if(tk===String(v))mean='The value being stored: '+v+'.';
+    else if(tk==='='||tk===':='||tk==='<-')mean='Puts the value on the right into the variable on the left. It means “store”, not “equals” like in maths.';
+    else if(tk==='$'||tk==='@')mean='A marker that '+L.n+' wants in front of variable names.';
+    else if((tk===';'||tk==='.')&&last)mean='Ends the instruction.';
+    else if(tk==='('||tk===')')mean='Brackets that group the parts together.';
+    else if(tk===':')mean='A colon. It separates the name from extra information, such as the type of value.';
+    else if(tk==='mut')mean='Short for “mutable”: the value is allowed to change later.';
+    else if(KW.indexOf(tk)>=0)mean='A keyword. It tells '+L.n+' “I am creating a variable.”';
+    else if(TYPEW.indexOf(tk)>=0)mean='The type: what kind of value the variable holds. Here, a whole number.';
+    else if(tk==='As')mean='Connects the name to its type.';
+    else mean='Part of the way '+L.n+' writes this instruction.';
+    out.push([tk,mean]);
+  }
+  return out;
+}
+function endMarkText(L){
+  var s=L.say[0];
+  if(/;\s*$/.test(s))return 'Each instruction here ends with a semicolon ( ; ). It works like the full stop at the end of a sentence.';
+  if(/\.\s*$/.test(s))return 'Each instruction here ends with a full stop ( . ), just like a sentence.';
+  return L.n+' does not need an end mark here. Starting a new line is enough to start a new instruction.';
+}
+function loopFirst(line){var w=line.replace(/^\s+/,'').split(/[\s(\[]/)[0].replace(/^\d+\./,'');return w||line;}
+function explainLoop(L,n){
+  var line=fillTpl(L.lp,{n:n}),first=loopFirst(line),p=[];
+  p.push([first,'The word that starts the loop.']);
+  if(line.indexOf(String(n))>=0)p.push([String(n),'How many rounds the loop runs.']);
+  if(/\bi\b|\bI\b|\|i\||\$i/.test(line))p.push(['i','A counter. It holds the round number and goes up each round.']);
+  var hint=/\{\s*$/.test(line)?'The curly brackets { } mark which lines belong inside the loop.':/:\s*$/.test(line)?'The indented lines under the colon are the ones that repeat.':/\bdo\s*(\|.*\|)?\s*$/.test(line)?'The lines between do and end are the ones that repeat.':'The lines that come right after it are the ones that repeat.';
+  p.push(['the block',hint]);
+  return p;
+}
+/* ===== difficulty ramp: 10 stages, level 1 (easy) to level 1000 (expert) ===== */
+var STAGES=[
+ {from:1,to:100,name:'Baby steps',diff:'Easy',msg:'Short words, tiny numbers, one-line programs. Take your time and enjoy it.'},
+ {from:101,to:200,name:'Getting going',diff:'Easy',msg:'Programs get a little longer, and you will start writing two lines at once.'},
+ {from:201,to:300,name:'Building blocks',diff:'Medium',msg:'Longer phrases, bigger numbers, and quiz questions with more choices.'},
+ {from:301,to:400,name:'Thinking in code',diff:'Medium',msg:'Two and three line programs. You will trace code in your head to find what it does.'},
+ {from:401,to:500,name:'Problem solver',diff:'Challenging',msg:'Longer programs and trickier traces, with loops and decisions mixed together.'},
+ {from:501,to:600,name:'Sharp coder',diff:'Hard',msg:'Hints fade away. Expect three-line programs and multi-step puzzles.'},
+ {from:601,to:700,name:'Code detective',diff:'Hard',msg:'Spot the exact result of tricky code with nested steps and close answers.'},
+ {from:701,to:800,name:'Algorithm athlete',diff:'Very hard',msg:'Sorting, searching and recursion. Four-line programs and long phrases.'},
+ {from:801,to:900,name:'Pro level',diff:'Very hard',msg:'Big numbers, deep traces, and answers that look almost the same.'},
+ {from:901,to:1000,name:'Grandmaster',diff:'Expert',msg:'The final climb. Five-line programs and the hardest puzzles in the game.'}
+];
+function stageOf(l){return STAGES[Math.min(9,Math.max(0,Math.floor((l-1)/100)))];}
+function stageNo(l){return Math.min(9,Math.max(0,Math.floor((l-1)/100)))+1;}
+function diffOf(l){return Math.min(1,Math.max(0,(l-1)/999));}
+function diffName(l){return stageOf(l).diff;}
+
+/* ===== texts get longer as levels rise ===== */
+var TEXTS2=['Hello my friend','Learning to code','Practice makes progress','I love pizza','Code every day','Hello from Earth','My first program','Small steps win','Keep it simple','The sun is bright','Debugging is fun','Welcome to the game','Stay curious','Pixels on screen','Ready set go','Fast and fun','Dream big','Press start now','Build something cool','Never give up'];
+var TEXTS3=['The quick brown fox jumps','Practice makes progress, step by step','Level 100 reached, great job!','Bugs are just puzzles to solve','Write code, run it, fix it, repeat','I am learning to code in 2026!','Every expert was once a beginner','Small programs grow into big ideas','Read the error message carefully','Test your code with different inputs','Computers follow instructions exactly','Good names make code easy to read','First make it work, then make it neat','Today I wrote 3 lines of code','The cat sat on the keyboard again'];
+function textPool(d){
+  if(d<.1)return TEXTS;
+  if(d<.3)return TEXTS.concat(TEXTS2);
+  if(d<.55)return TEXTS2;
+  if(d<.75)return TEXTS2.concat(TEXTS3);
+  return TEXTS3;
+}
+function valMax(L,d){if(L.n==='COBOL')return 99;return d<.3?99:d<.65?999:9999;}
+
+/* ===== how many lines the three write-your-own-code quizzes ask for ===== */
+function wlines(level){
+  var t=[[40,[1,1,1]],[100,[1,1,2]],[180,[1,2,2]],[280,[2,2,2]],[400,[2,2,3]],[520,[2,3,3]],[660,[3,3,3]],[800,[3,3,4]],[900,[3,4,4]],[1001,[4,4,5]]];
+  for(var i=0;i<t.length;i++)if(level<t[i][0])return t[i][1].slice();
+  return [4,4,5];
+}
+var NUMW=['zero','one','two','three','four','five','six'];
+
+function mkLine(L,kind,r,tx,d){
+  var sv=L.sv||'prints',t,n,v;
+  if(kind==='say'){t=tx.next();return {kind:'say',line:sayLine(L,t),desc:sv+' the text “'+t+'”',one:'Write one line of '+L.n+' that '+sv+' the text “'+t+'”.',len:t.length};}
+  if(kind==='cmt'){t=tx.next();return {kind:'cmt',line:cmtLine(L,t),desc:'is a comment that says “'+t+'”',one:'Write a '+L.n+' comment that says “'+t+'”.',len:t.length};}
+  n=tx.name();v=ri(r,2,valMax(L,d));
+  return {kind:'var',line:varLine(L,n,v),desc:varPhrase(L,n,v),one:'Write one line of '+L.n+' that '+varPhrase(L,n,v)+'.',len:8};
+}
+function tipFor(L,kinds){
+  var seen={},parts=[];
+  kinds.forEach(function(k){if(seen[k])return;seen[k]=1;
+    if(k==='say')parts.push(sayText(L,'your text'));
+    else if(k==='cmt')parts.push(fillTpl(L.cm[0],{t:'your note'}));
+    else if(L.vr)parts.push(fillTpl(L.vr[0],{n:'name',N:'Name',U:'NAME',v:'value'}));});
+  return (parts.length>1?'Patterns in ':'Pattern in ')+L.n+': '+parts.join('   |   ');
+}
+function writeMulti(L,count,first,r,tx,d){
+  var avail=['say','cmt'];if(L.vr)avail.push('var');
+  if(first==='var'&&!L.vr)first='cmt';
+  var kinds=[first],pool=shuffle(r,avail);
+  for(var i=1;i<count;i++){
+    var k=pool[(i-1)%pool.length];
+    if(k===kinds[i-1]&&pool.length>1)k=pool[i%pool.length];
+    kinds.push(k);
+  }
+  var parts=kinds.map(function(k){return mkLine(L,k,r,tx,d);});
+  var q={k:'write',lines:parts.map(function(p){return p.line;})};
+  if(count===1)q.q=parts[0].one;
+  else{
+    q.q='Write '+NUMW[count]+' lines of '+L.n+', one after the other.';
+    parts.forEach(function(p,i){q.q+='\nLine '+(i+1)+' '+p.desc+'.';});
+  }
+  q.lc=count;
+  if(d<.35)q.tip=tipFor(L,kinds);
+  return q;
+}
+/* ===== code-reading puzzles that get harder with d (0 = easiest, 1 = hardest) ===== */
+function near(v){return [v+1,v-1,v+2,v-2,v+3,v-3,v+5,v-5,v+10,v-10,v*2,Math.floor(v/2)];}
+function fill(r,val,plaus){
+  var out=[];
+  (plaus||[]).forEach(function(x){if(x!==val&&out.indexOf(x)<0&&!(val>=0&&x<0))out.push(x);});
+  shuffle(r,near(val)).forEach(function(x){if(x!==val&&out.indexOf(x)<0&&!(val>=0&&x<0))out.push(x);});
+  return out;
+}
+function mcN(r,q,val,wrongs,ev){var o=mc(r,q,val,wrongs,true);o.ev=ev;return o;}
+function lst(a){return '['+a.join(', ')+']';}
+var WORDS2=['banana','keyboard','program','coding','algorithm','pixel','function','variable','compile','laptop','python','computer','software','database','network','browser','internet','developer','monitor','machine'];
+function letters(r,w,ex){
+  var al='abcdefghijklmnopqrstuvwxyz'.split(''),out=[];
+  shuffle(r,w.split('')).forEach(function(c){if(c!==ex&&out.indexOf(c)<0)out.push(c);});
+  shuffle(r,al).forEach(function(c){if(c!==ex&&out.indexOf(c)<0)out.push(c);});
+  return out;
+}
+
+/* --- arithmetic with + - * and brackets --- */
+function evalOps(nums,ops){
+  var n=[nums[0]],o=[];
+  for(var i=0;i<ops.length;i++){if(ops[i]==='*'){n[n.length-1]*=nums[i+1];}else{o.push(ops[i]);n.push(nums[i+1]);}}
+  var v=n[0];for(var j=0;j<o.length;j++)v=o[j]==='+'?v+n[j+1]:v-n[j+1];
+  return v;
+}
+function gArith(r,d){
+  var k=d<.08?1:d<.3?2:d<.6?3:d<.85?4:5,mx=d<.1?12:d<.3?20:d<.6?50:d<.85?99:199,tries=0,ns,ops,pi,s,val;
+  do{
+    ns=[];ops=[];
+    for(var i=0;i<=k;i++)ns.push(ri(r,2,mx));
+    for(var j=0;j<k;j++)ops.push(pick(r,d<.1?['+','-']:['+','-','*']));
+    for(var m=0;m<k;m++)if(ops[m]==='*'){ns[m]=Math.min(ns[m],12);ns[m+1]=Math.min(ns[m+1],12);}
+    pi=(d>=.2&&k>=2&&r()<.6)?ri(r,0,k-1):-1;
+    var n2=ns.slice(),o2=ops.slice();
+    if(pi>=0){var pv=evalOps([ns[pi],ns[pi+1]],[ops[pi]]);n2=ns.slice(0,pi).concat([pv],ns.slice(pi+2));o2=ops.slice(0,pi).concat(ops.slice(pi+1));}
+    val=evalOps(n2,o2);
+    s=[];for(var t=0;t<=k;t++){var tok=String(ns[t]);if(t===pi)tok='('+tok;if(pi>=0&&t===pi+1)tok=tok+')';s.push(tok);if(t<k)s.push(ops[t]);}
+    tries++;
+  }while(tries<40&&((d<.3&&val<0)||Math.abs(val)>3000));
+  var expr=s.join(' '),ltr=ns[0];
+  for(var u=0;u<k;u++){var b2=ns[u+1];ltr=ops[u]==='+'?ltr+b2:ops[u]==='-'?ltr-b2:ltr*b2;}
+  return mcN(r,'What is '+expr+'?',val,fill(r,val,(pi<0&&ltr!==val)?[ltr]:[]),'return '+expr+';');
+}
+/* --- whole-number division and remainder --- */
+function gDivmod(r,d){
+  var bm=d<.3?9:d<.6?19:97,mx=d<.3?40:d<.6?300:9999,b=ri(r,3,bm),a=ri(r,b+3,mx),qv=Math.floor(a/b),m=a%b;
+  var kind=d<.3?pick(r,['q','m']):d<.6?pick(r,['q','m','sum']):pick(r,['m','sum','mix']);
+  var note=' (// is whole-number division and % is the remainder.)';
+  if(kind==='q')return mcN(r,'How many whole times does '+b+' fit into '+a+'? (Ignore the remainder.)',qv,fill(r,qv,[m,qv+1]),'return Math.floor('+a+'/'+b+');');
+  if(kind==='m')return mcN(r,'What is '+a+' % '+b+'? (The % sign gives the remainder after division.)',m,fill(r,m,[qv,m+1]),'return '+a+'%'+b+';');
+  if(kind==='sum'){var v=qv+m;return mcN(r,'What is ('+a+' // '+b+') + ('+a+' % '+b+')?'+note,v,fill(r,v,[qv,m,qv*m]),'return Math.floor('+a+'/'+b+')+('+a+'%'+b+');');}
+  var c=ri(r,2,9),v2=m*c+qv;
+  return mcN(r,'What is ('+a+' % '+b+') * '+c+' + ('+a+' // '+b+')?'+note,v2,fill(r,v2,[(m+qv)*c,m*(c+qv)]),'return ('+a+'%'+b+')*'+c+'+Math.floor('+a+'/'+b+');');
+}
+/* --- text: indexes, lengths, counting --- */
+function gStrIdx(r,d){
+  var w=pick(r,WORDS2),n=w.length,kind=d<.3?'i':d<.6?pick(r,['i','last']):pick(r,['i','last','two']);
+  if(kind==='i'){var i=ri(r,0,n-1);return mcN(r,'text = "'+w+'"\nCounting from 0, which character is text['+i+']?',w[i],letters(r,w,w[i]),'var t="'+w+'";return t['+i+'];');}
+  if(kind==='last'){var k=ri(r,1,3);return mcN(r,'text = "'+w+'"\nCounting from 0, which character is text[length - '+k+']? (The length is '+n+'.)',w[n-k],letters(r,w,w[n-k]),'var t="'+w+'";return t[t.length-'+k+'];');}
+  var a=ri(r,0,n-1),b=ri(r,0,n-1),ans=w[a]+w[b],al='abcdefghijklmnopqrstuvwxyz';
+  var wr=[w[b]+w[a],w[Math.min(n-1,a+1)]+w[b],w[a]+w[Math.max(0,b-1)],pick(r,al.split(''))+w[b],w[a]+pick(r,al.split(''))];
+  return mcN(r,'text = "'+w+'"\nCounting from 0, what do text['+a+'] and text['+b+'] make when joined together, in that order?',ans,wr,'var t="'+w+'";return t['+a+']+t['+b+'];');
+}
+function gStrLen(r,d){
+  var a=pick(r,WORDS2),b=pick(r,WORDS2),kind=d<.3?'one':d<.55?'cat':pick(r,['cat','count','calc']);
+  if(kind==='one')return mcN(r,'How many characters are in the text “'+a+'”?',a.length,fill(r,a.length,[]),'return "'+a+'".length;');
+  if(kind==='cat'){var v=a.length+b.length;return mcN(r,'a = "'+a+'"\nb = "'+b+'"\nHow many characters are in a + b? (A plus sign joins two texts.)',v,fill(r,v,[v+1,v-1]),'return ("'+a+'"+"'+b+'").length;');}
+  if(kind==='count'){var ch=pick(r,a.split('')),cnt=a.split(ch).length-1;return mcN(r,'How many times does the letter “'+ch+'” appear in “'+a+'”?',cnt,fill(r,cnt,[cnt+1,cnt-1,a.length]),'return "'+a+'".split("'+ch+'").length-1;');}
+  var v2=a.length*2+b.length;
+  return mcN(r,'a = "'+a+'"\nb = "'+b+'"\nWhat is length(a) * 2 + length(b)?',v2,fill(r,v2,[a.length+b.length,(a.length+b.length)*2]),'return "'+a+'".length*2+"'+b+'".length;');
+}
+function gStrops(r,d){
+  var a=pick(r,WORDS2),b=pick(r,WORDS2),kind=d<.5?pick(r,['rev','first']):pick(r,['rev','first','mix','lenup']);
+  var rv=function(s){return s.split('').reverse().join('');};
+  if(kind==='rev')return mcN(r,'text = "'+a+'"\nWhat is text written backwards?',rv(a),[a,rv(b),a.slice(1)+a[0],rv(a).slice(1)],'return "'+a+'".split("").reverse().join("");');
+  if(kind==='first'){var k=ri(r,2,4);return mcN(r,'text = "'+a+'"\nWhat are the first '+k+' characters of text?',a.slice(0,k),[a.slice(1,k+1),a.slice(0,k+1),a.slice(0,k-1),rv(a).slice(0,k)],'return "'+a+'".slice(0,'+k+');');}
+  if(kind==='mix'){var ans=a.slice(0,3)+b.slice(-2);return mcN(r,'a = "'+a+'"\nb = "'+b+'"\nWhat is (the first 3 characters of a) + (the last 2 characters of b)?',ans,[b.slice(0,3)+a.slice(-2),a.slice(0,2)+b.slice(-3),a.slice(-3)+b.slice(0,2),a.slice(0,3)+b.slice(-3)],'var a="'+a+'",b="'+b+'";return a.slice(0,3)+b.slice(-2);');}
+  var v=(a+b).length+a.toUpperCase().length;
+  return mcN(r,'a = "'+a+'"\nb = "'+b+'"\nWhat is length(a + b) + length(upper(a))? (upper makes every letter a capital.)',v,fill(r,v,[(a+b).length,a.length*2]),'var a="'+a+'",b="'+b+'";return (a+b).length+a.toUpperCase().length;');
+}
+/* --- lists --- */
+function gIndex(r,d){
+  var len=d<.3?ri(r,4,6):ri(r,5,8),kind=d<.3?'i':d<.55?pick(r,['i','last','sum']):pick(r,['sum','last','indirect','chain']),arr=[],i;
+  if(kind==='indirect'||kind==='chain'){arr=shuffle(r,Array.apply(null,Array(len)).map(function(_,x){return x;}));}
+  else{var hi=d<.3?99:d<.6?199:999;while(arr.length<len){var x=ri(r,1,hi);if(arr.indexOf(x)<0)arr.push(x);}}
+  var hd='items = '+lst(arr)+'\n',pre='var items='+lst(arr)+';';
+  if(kind==='i'){i=ri(r,0,len-1);return mcN(r,hd+'Counting from 0, what is items['+i+']?',arr[i],arr.filter(function(_,x){return x!==i;}),pre+'return items['+i+'];');}
+  if(kind==='last'){var k=ri(r,1,2);return mcN(r,hd+'What is items[length - '+k+']? (The length is '+len+'.)',arr[len-k],arr.filter(function(_,x){return x!==len-k;}),pre+'return items[items.length-'+k+'];');}
+  if(kind==='sum'){var a=ri(r,0,len-1),b=ri(r,0,len-1),v=arr[a]+arr[b];return mcN(r,hd+'What is items['+a+'] + items['+b+']?',v,fill(r,v,[arr[a]+arr[Math.min(len-1,b+1)],arr[a]]),pre+'return items['+a+']+items['+b+'];');}
+  var k2=ri(r,0,len-1);
+  if(kind==='indirect'){var v1=arr[arr[k2]];return mcN(r,hd+'What is items[items['+k2+']]? (Work from the inside out.)',v1,arr.filter(function(x){return x!==v1;}),pre+'return items[items['+k2+']];');}
+  var v3=arr[arr[arr[k2]]];
+  return mcN(r,hd+'What is items[items[items['+k2+']]]? (Work from the inside out.)',v3,arr.filter(function(x){return x!==v3;}),pre+'return items[items[items['+k2+']]];');
+}
+function gListq(r,d){
+  var n0=d<.3?3:d<.6?4:5,arr=[],hi=d<.3?9:d<.6?30:99;
+  for(var i=0;i<n0;i++)arr.push(ri(r,1,hi));
+  var cur=arr.slice(),lines=['items = '+lst(arr)],js='var items='+lst(arr)+';';
+  var steps=d<.3?1:d<.6?2:d<.8?3:d<.92?4:5;
+  for(var s=0;s<steps;s++){
+    var op=pick(r,d<.3?['add']:d<.6?['add','removeFirst','removeLast']:['add','removeFirst','removeLast','insert','sort','reverse']);
+    if(op==='add'){var x=ri(r,1,hi);cur.push(x);lines.push('add '+x+' to the end of items');js+='items.push('+x+');';}
+    else if(op==='removeFirst'&&cur.length>2){cur.shift();lines.push('remove the first item');js+='items.shift();';}
+    else if(op==='removeLast'&&cur.length>2){cur.pop();lines.push('remove the last item');js+='items.pop();';}
+    else if(op==='insert'){var x2=ri(r,1,hi);cur.splice(1,0,x2);lines.push('insert '+x2+' at position 1');js+='items.splice(1,0,'+x2+');';}
+    else if(op==='sort'){cur.sort(function(a,b){return a-b;});lines.push('sort items from smallest to largest');js+='items.sort(function(a,b){return a-b;});';}
+    else if(op==='reverse'){cur.reverse();lines.push('reverse the order of items');js+='items.reverse();';}
+    else{var x3=ri(r,1,hi);cur.push(x3);lines.push('add '+x3+' to the end of items');js+='items.push('+x3+');';}
+  }
+  var kind=pick(r,d<.3?['len','first']:['len','first','last','sum','max','at']),ask,val,ev;
+  var sum=cur.reduce(function(a,b){return a+b;},0),mx=Math.max.apply(null,cur);
+  if(kind==='len'){ask='How many items are in items now?';val=cur.length;ev='return items.length;';}
+  else if(kind==='first'){ask='What is the first item now?';val=cur[0];ev='return items[0];';}
+  else if(kind==='last'){ask='What is the last item now?';val=cur[cur.length-1];ev='return items[items.length-1];';}
+  else if(kind==='sum'){ask='What is the sum of all items now?';val=sum;ev='return items.reduce(function(a,b){return a+b;},0);';}
+  else if(kind==='max'){ask='What is the biggest item now?';val=mx;ev='return Math.max.apply(null,items);';}
+  else{var at=ri(r,0,cur.length-1);ask='Counting from 0, what is items['+at+'] now?';val=cur[at];ev='return items['+at+'];';}
+  var wr=cur.filter(function(x){return x!==val;}).concat(kind==='len'?[val+1,val-1]:[]);
+  return mcN(r,lines.join('\n')+'\n'+ask,val,fill(r,val,wr),js+ev);
+}
+/* --- booleans --- */
+function gBool(r,d){
+  var cmpOn=d>=.35;
+  function operand(){
+    if(cmpOn&&r()<.55){var a=ri(r,1,20),b=ri(r,1,20),op=pick(r,['>','<','==','!=','>=','<=']);
+      var v=op==='>'?a>b:op==='<'?a<b:op==='=='?a===b:op==='!='?a!==b:op==='>='?a>=b:a<=b;return {s:a+' '+op+' '+b,js:a+' '+op+' '+b,v:v};}
+    var t=r()<.5;return {s:String(t),js:String(t),v:t};
+  }
+  function ap(x,op,y){return op==='AND'?(x&&y):(x||y);}
+  function jo(op){return op==='AND'?'&&':'||';}
+  var o=[operand(),operand(),operand(),operand()],p=pick(r,['AND','OR']),p2=pick(r,['AND','OR']),p3=pick(r,['AND','OR']),s,js,v;
+  if(d<.2){s=o[0].s+' '+p+' '+o[1].s;js=o[0].js+jo(p)+o[1].js;v=ap(o[0].v,p,o[1].v);}
+  else if(d<.5){s='('+o[0].s+' '+p+' '+o[1].s+') '+p2+' '+o[2].s;js='(('+o[0].js+')'+jo(p)+'('+o[1].js+'))'+jo(p2)+'('+o[2].js+')';v=ap(ap(o[0].v,p,o[1].v),p2,o[2].v);}
+  else{
+    var neg=r()<.6,g1=ap(o[0].v,p,o[1].v),g2=ap(o[2].v,p3,o[3].v);
+    s=(neg?'NOT ':'')+'('+o[0].s+' '+p+' '+o[1].s+') '+p2+' ('+o[2].s+' '+p3+' '+o[3].s+')';
+    js=(neg?'!':'')+'(('+o[0].js+')'+jo(p)+'('+o[1].js+'))'+jo(p2)+'(('+o[2].js+')'+jo(p3)+'('+o[3].js+'))';
+    v=ap(neg?!g1:g1,p2,g2);
+  }
+  var q={k:'mc',q:'What is the result of: '+s+'?',opts:['true','false'],a:v?0:1,fo:true,ev:'return ('+js+');'};
+  return q;
+}
+/* --- number systems and bits --- */
+function gBin(r,d){
+  var bits=d<.2?4:d<.5?6:8,kind=d<.3?pick(r,['d2b','b2d']):d<.6?pick(r,['d2b','b2d','add']):pick(r,['b2d','add','ones','d2b']);
+  var mx=Math.pow(2,bits)-1,n=ri(r,3,mx),bs=function(x){return x.toString(2);};
+  function bw(x){var o=[];[1,-1,2,-2,4,-4,8,16].forEach(function(dx){var y=x+dx;if(y>0&&y<=mx*2)o.push(y);});return o;}
+  if(kind==='d2b')return mcN(r,'What is the number '+n+' written in binary?',bs(n),bw(n).map(bs),'return '+n+'..toString(2);');
+  if(kind==='b2d')return mcN(r,'What is the binary number '+bs(n)+' in everyday (decimal) numbers?',n,fill(r,n,bw(n)),'return parseInt("'+bs(n)+'",2);');
+  if(kind==='add'){var a=ri(r,2,mx>>1),b=ri(r,2,mx>>1),v=a+b;return mcN(r,'What is '+bs(a)+' + '+bs(b)+' in binary arithmetic? Give the answer in decimal numbers.',v,fill(r,v,[a,b,a*b]),'return parseInt("'+bs(a)+'",2)+parseInt("'+bs(b)+'",2);');}
+  var ones=bs(n).split('1').length-1;
+  return mcN(r,'How many 1s are in the binary number '+bs(n)+'?',ones,fill(r,ones,[bs(n).length-ones,bs(n).length]),'return "'+bs(n)+'".split("1").length-1;');
+}
+function gHex(r,d){
+  var mx=d<.4?255:d<.7?4095:65535,n=ri(r,16,mx),hx=n.toString(16).toUpperCase(),kind=d<.6?pick(r,['h2d','d2h']):pick(r,['h2d','d2h','color']);
+  if(kind==='h2d')return mcN(r,'What is the decimal value of the hexadecimal number '+hx+'?',n,fill(r,n,[n+16,n-16,n+256]),'return parseInt("'+hx+'",16);');
+  if(kind==='d2h'){var ws=[n+1,n-1,n+16,n-16,n+256].filter(function(x){return x>0;}).map(function(x){return x.toString(16).toUpperCase();});return mcN(r,'What is the number '+n+' written in hexadecimal?',hx,ws,'return '+n+'..toString(16).toUpperCase();');}
+  var R=ri(r,0,255),G=ri(r,0,255),B=ri(r,0,255),h2=function(x){return (x<16?'0':'')+x.toString(16).toUpperCase();},col='#'+h2(R)+h2(G)+h2(B);
+  var chan=pick(r,['red','green','blue']),idx=chan==='red'?0:chan==='green'?1:2,val=[R,G,B][idx];
+  return mcN(r,'In the colour code '+col+', the pairs of digits are red, green and blue (in hexadecimal). What is the '+chan+' value in decimal?',val,fill(r,val,[[R,G,B][(idx+1)%3],[R,G,B][(idx+2)%3]]),'return parseInt("'+col.slice(1+2*idx,3+2*idx)+'",16);');
+}
+function gBits(r,d){
+  var mx=d<.4?15:d<.7?63:255,a=ri(r,2,mx),b=ri(r,2,mx),op=pick(r,d<.5?['AND','OR','XOR']:['AND','OR','XOR','SHL','SHR','mix']),v,q,ev;
+  var f={AND:function(x,y){return x&y;},OR:function(x,y){return x|y;},XOR:function(x,y){return x^y;}};
+  var bs=function(x){return x.toString(2);},note=' (AND keeps bits that are 1 in both numbers, OR keeps bits that are 1 in either, XOR keeps bits that differ.)';
+  if(op==='AND'||op==='OR'||op==='XOR'){v=f[op](a,b);q='What is '+a+' '+op+' '+b+'?'+note;ev='return '+a+({AND:'&',OR:'|',XOR:'^'})[op]+b+';';return mcN(r,q,v,fill(r,v,[a&b,a|b,a^b]),ev);}
+  if(op==='SHL'){var k=ri(r,1,3);v=a<<k;return mcN(r,'What is '+a+' shifted left by '+k+' bits? (Shifting left by 1 bit doubles a number.)',v,fill(r,v,[a*k,a+k,a<<(k+1)]),'return '+a+'<<'+k+';');}
+  if(op==='SHR'){var k2=ri(r,1,3);v=a>>k2;return mcN(r,'What is '+a+' shifted right by '+k2+' bits? (Shifting right by 1 bit halves a number and drops the remainder.)',v,fill(r,v,[a-k2,a>>(k2+1),Math.floor(a/(k2+1))]),'return '+a+'>>'+k2+';');}
+  var c=ri(r,2,mx);v=(a^b)&c;
+  return mcN(r,'What is ('+a+' XOR '+b+') AND '+c+'?'+note,v,fill(r,v,[(a&b)^c,(a|b)&c,a^b]),'return ('+a+'^'+b+')&'+c+';');
+}
+/* --- variables that change --- */
+function gChain(r,d){
+  var k=d<.2?2:d<.5?3:d<.75?4:d<.9?6:8,x=ri(r,2,d<.3?9:d<.6?30:99),vn=pick(r,['x','n','total','score','value']),lines=[vn+' = '+x],js='var '+vn+'='+x+';',cur=x;
+  for(var i=0;i<k;i++){
+    var op=pick(r,d<.3?['+','-','*']:d<.6?['+','-','*','//']:['+','-','*','//','%']),n;
+    if(op==='+'){n=ri(r,1,d<.5?9:40);cur+=n;}
+    else if(op==='-'){n=ri(r,1,Math.max(1,Math.min(cur-1,d<.5?9:40)));cur-=n;}
+    else if(op==='*'){n=ri(r,2,d<.5?4:6);cur*=n;}
+    else if(op==='//'){n=ri(r,2,5);cur=Math.floor(cur/n);}
+    else{n=ri(r,2,7);cur=cur%n;}
+    lines.push(vn+' = '+vn+' '+op+' '+n);js+=vn+'='+(op==='//'?'Math.floor('+vn+'/'+n+')':vn+op+n)+';';
+  }
+  return mcN(r,lines.join('\n')+'\nWhat is '+vn+' now?'+(d>=.3?' (// is whole-number division, % is the remainder.)':''),cur,fill(r,cur,[]),js+'return '+vn+';');
+}
+/* --- decisions --- */
+function gIfq(r,d){
+  if(d<.15){var th=ri(r,10,18),sc=ri(r,5,24);
+    return {k:'mc',q:'score = '+sc+'\nif score >= '+th+':\n    show "pass"\nelse:\n    show "try again"\nWhat does the program show?',opts:['pass','try again'],a:sc>=th?0:1,fo:true,ev:'var score='+sc+';if(score>='+th+')return "pass";else return "try again";'};}
+  if(d<.4){var t1=ri(r,60,90),sc2=ri(r,40,99),t2=t1-ri(r,10,25),res=sc2>=t1?'A':sc2>=t2?'B':'C';
+    return {k:'mc',q:'score = '+sc2+'\nif score >= '+t1+':\n    show "A"\nelse if score >= '+t2+':\n    show "B"\nelse:\n    show "C"\nWhat does the program show?',opts:['A','B','C'],a:['A','B','C'].indexOf(res),ev:'var score='+sc2+';if(score>='+t1+')return "A";else if(score>='+t2+')return "B";else return "C";'};}
+  if(d<.7){var age=ri(r,6,40),ok=r()<.5,tk=ri(r,1,3),a2=pick(r,[12,13,16,18]),res2=(age>=a2&&ok)?'enter':(age>=a2&&!ok)?'buy a ticket':'wait outside';
+    return {k:'mc',q:'age = '+age+'\nhasTicket = '+ok+'\nif age >= '+a2+' AND hasTicket:\n    show "enter"\nelse if age >= '+a2+':\n    show "buy a ticket"\nelse:\n    show "wait outside"\nWhat does the program show?',opts:['enter','buy a ticket','wait outside'],a:['enter','buy a ticket','wait outside'].indexOf(res2),ev:'var age='+age+',hasTicket='+ok+';if(age>='+a2+'&&hasTicket)return "enter";else if(age>='+a2+')return "buy a ticket";else return "wait outside";'};}
+  var n=ri(r,1,d<.85?60:300),res3=n%15===0?'FizzBuzz':n%3===0?'Fizz':n%5===0?'Buzz':String(n),opts=['FizzBuzz','Fizz','Buzz',String(n)];
+  if(opts.indexOf(res3)<0)opts.push(res3);
+  var fb=shuffle(r,opts);
+  return {k:'mc',q:'n = '+n+'\nif n % 15 == 0:\n    show "FizzBuzz"\nelse if n % 3 == 0:\n    show "Fizz"\nelse if n % 5 == 0:\n    show "Buzz"\nelse:\n    show n\nWhat does the program show?',opts:fb,a:fb.indexOf(res3),ev:'var n='+n+';if(n%15==0)return "FizzBuzz";else if(n%3==0)return "Fizz";else if(n%5==0)return "Buzz";else return String(n);'};
+}
+/* --- loops --- */
+function gLoopcount(r,d){
+  var lc=ri(r,3,9);
+  if(d<.2)return mcN(r,'for i from 1 to '+lc+':\n    show i\nHow many numbers does the loop show?',lc,fill(r,lc,[lc-1,lc+1]).filter(function(x){return x>0;}),'var c=0;for(var i=1;i<='+lc+';i++)c++;return c;');
+  var st=ri(r,2,4),hi=lc*st+ri(r,0,st-1),c=0;for(var i=1;i<=hi;i+=st)c++;
+  return mcN(r,'for i from 1 to '+hi+' step '+st+':\n    show i\nHow many numbers does the loop show?',c,fill(r,c,[Math.floor(hi/st),Math.floor(hi/st)+2,hi]).filter(function(x){return x>0;}),'var c=0;for(var i=1;i<='+hi+';i+='+st+')c++;return c;');
+}
+function gLoopsum(r,d){
+  var v=d<.2?0:d<.45?1:d<.7?pick(r,[1,2]):pick(r,[2,3,4]),t=0,code,ev;
+  if(v===0){var n=ri(r,3,d<.1?6:9);for(var i=1;i<=n;i++)t+=i;code='total = 0\nfor i from 1 to '+n+':\n    total = total + i';ev='var total=0;for(var i=1;i<='+n+';i++)total=total+i;return total;';}
+  else if(v===1){var s=ri(r,2,3),a=ri(r,1,4),b=a+s*ri(r,3,6)+ri(r,0,s-1);for(var i2=a;i2<=b;i2+=s)t+=i2;code='total = 0\nfor i from '+a+' to '+b+' step '+s+':\n    total = total + i';ev='var total=0;for(var i=' +a+';i<='+b+';i+='+s+')total=total+i;return total;';}
+  else if(v===2){var m=pick(r,[2,3,5]),n2=ri(r,8,d<.6?20:40);for(var i3=1;i3<=n2;i3++)if(i3%m===0)t+=i3;code='total = 0\nfor i from 1 to '+n2+':\n    if i % '+m+' == 0:\n        total = total + i';ev='var total=0;for(var i=1;i<='+n2+';i++){if(i%'+m+'==0)total=total+i;}return total;';}
+  else if(v===3){var n3=ri(r,4,d<.8?8:12);for(var i4=1;i4<=n3;i4++)t+=i4*i4;code='total = 0\nfor i from 1 to '+n3+':\n    total = total + i * i';ev='var total=0;for(var i=1;i<='+n3+';i++)total=total+i*i;return total;';}
+  else{var lim=ri(r,20,60),i5=1;t=0;while(i5<=50&&t<=lim){t+=i5;i5++;}
+    code='total = 0\nfor i from 1 to 50:\n    total = total + i\n    if total > '+lim+':\n        stop the loop';ev='var total=0;for(var i=1;i<=50;i++){total=total+i;if(total>'+lim+')break;}return total;';}
+  return mcN(r,code+'\nWhat is total at the end?',t,fill(r,t,[t-1,t+1,t*2]),ev);
+}
+function gWhile(r,d){
+  var k=ri(r,2,3),lim=d<.4?ri(r,20,60):d<.7?ri(r,100,700):ri(r,1000,9000),x=ri(r,1,4),c=0,cur=x,add=d>=.6&&r()<.4,st=ri(r,2,5);
+  if(add){while(cur<lim){cur+=st;c++;}}else{while(cur<lim){cur*=k;c++;}}
+  var ask=r()<.5?'count':'x',val=ask==='count'?c:cur,body=add?'x = x + '+st:'x = x * '+k;
+  var ev='var x='+x+',count=0;while(x<'+lim+'){'+(add?'x=x+'+st:'x=x*'+k)+';count=count+1;}return '+(ask==='count'?'count':'x')+';';
+  return mcN(r,'x = '+x+'\ncount = 0\nwhile x < '+lim+':\n    '+body+'\n    count = count + 1\n'+(ask==='count'?'How many times did the loop run?':'What is x when the loop stops?'),val,fill(r,val,ask==='count'?[c-1,c+1]:[cur-st,cur*k]),ev);
+}
+function gNested(r,d){
+  var a=ri(r,2,d<.5?4:6),b=ri(r,2,d<.5?5:7),v=d<.25?0:d<.5?pick(r,[0,1]):pick(r,[1,2,3]),c=0,code,ev,t=0;
+  if(v===0){c=a*b;code='count = 0\nfor i from 1 to '+a+':\n    for j from 1 to '+b+':\n        count = count + 1';ev='var count=0;for(var i=1;i<='+a+';i++){for(var j=1;j<='+b+';j++){count=count+1;}}return count;';}
+  else if(v===1){for(var i=1;i<=a+1;i++)for(var j=1;j<=i;j++)c++;code='count = 0\nfor i from 1 to '+(a+1)+':\n    for j from 1 to i:\n        count = count + 1';ev='var count=0;for(var i=1;i<='+(a+1)+';i++){for(var j=1;j<=i;j++){count=count+1;}}return count;';}
+  else if(v===2){for(var i2=1;i2<=a+1;i2++)for(var j2=1;j2<=b+1;j2++)if((i2+j2)%2===0)c++;code='count = 0\nfor i from 1 to '+(a+1)+':\n    for j from 1 to '+(b+1)+':\n        if (i + j) % 2 == 0:\n            count = count + 1';ev='var count=0;for(var i=1;i<='+(a+1)+';i++){for(var j=1;j<='+(b+1)+';j++){if((i+j)%2==0)count=count+1;}}return count;';}
+  else{for(var i3=1;i3<=a;i3++)for(var j3=1;j3<=b;j3++)t+=i3*j3;c=t;code='total = 0\nfor i from 1 to '+a+':\n    for j from 1 to '+b+':\n        total = total + i * j';ev='var total=0;for(var i=1;i<='+a+';i++){for(var j=1;j<='+b+';j++){total=total+i*j;}}return total;';}
+  return mcN(r,code+'\nWhat is '+(v===3?'total':'count')+' at the end?',c,fill(r,c,[c+a,c-a,a*b]),ev);
+}
+/* --- functions and recursion --- */
+function gFnq(r,d){
+  var x=ri(r,2,9),y=ri(r,2,9),k=ri(r,1,9),form=d<.25?'one':d<.5?pick(r,['one','two']):d<.75?pick(r,['two','comp']):pick(r,['comp','cond','loop']),v,code,ev;
+  if(form==='one'){var m=ri(r,2,5);v=x*m+k;code='function f(x):\n    return x * '+m+' + '+k+'\nWhat is f('+x+')?';ev='function f(x){return x*'+m+'+'+k+';}return f('+x+');';return mcN(r,code,v,fill(r,v,[x*(m+k),x+m+k]),ev);}
+  if(form==='two'){v=x*y+k;code='function f(a, b):\n    return a * b + '+k+'\nWhat is f('+x+', '+y+')?';ev='function f(a,b){return a*b+'+k+';}return f('+x+','+y+');';return mcN(r,code,v,fill(r,v,[x+y+k,x*(y+k),y*x]),ev);}
+  if(form==='comp'){var m2=ri(r,2,4);v=(x+k)*m2;code='function add(n):\n    return n + '+k+'\nfunction times(n):\n    return n * '+m2+'\nWhat is times(add('+x+'))? (Work from the inside out.)';ev='function add(n){return n+'+k+';}function times(n){return n*'+m2+';}return times(add('+x+'));';return mcN(r,code,v,fill(r,v,[x+k*m2,x*m2+k,(x+k)+m2]),ev);}
+  if(form==='cond'){var t=ri(r,5,12),arg=ri(r,2,20);v=arg>t?arg-t:t-arg;code='function gap(a):\n    if a > '+t+':\n        return a - '+t+'\n    else:\n        return '+t+' - a\nWhat is gap('+arg+')?';ev='function gap(a){if(a>'+t+')return a-'+t+';else return '+t+'-a;}return gap('+arg+');';return mcN(r,code,v,fill(r,v,[arg+t,arg,t]),ev);}
+  var n=ri(r,3,7);v=0;for(var i=1;i<=n;i++)v+=i*x;
+  code='function f(n):\n    total = 0\n    for i from 1 to n:\n        total = total + i * '+x+'\n    return total\nWhat is f('+n+')?';ev='function f(n){var total=0;for(var i=1;i<=n;i++){total=total+i*'+x+';}return total;}return f('+n+');';
+  return mcN(r,code,v,fill(r,v,[v-x,v+x,n*x]),ev);
+}
+function gRecq(r,d){
+  var form=d<.5?pick(r,['sum','pow']):d<.75?pick(r,['sum','fact','pow','fib']):pick(r,['fact','fib','gcd','pow']),v,code,ev,n;
+  if(form==='sum'){n=ri(r,3,d<.5?6:10);v=n*(n+1)/2;code='function sumTo(n):\n    if n == 0:\n        return 0\n    return n + sumTo(n - 1)\nWhat is sumTo('+n+')?';ev='function sumTo(n){if(n==0)return 0;return n+sumTo(n-1);}return sumTo('+n+');';return mcN(r,code,v,fill(r,v,[v-n,v+n,n*n]),ev);}
+  if(form==='pow'){var b=ri(r,2,4),e=ri(r,2,d<.7?5:7);v=Math.pow(b,e);code='function power(b, e):\n    if e == 0:\n        return 1\n    return b * power(b, e - 1)\nWhat is power('+b+', '+e+')?';ev='function power(b,e){if(e==0)return 1;return b*power(b,e-1);}return power('+b+','+e+');';return mcN(r,code,v,fill(r,v,[b*e,Math.pow(b,e-1),Math.pow(b,e+1)]),ev);}
+  if(form==='fact'){n=ri(r,3,d<.85?6:8);v=1;for(var i=2;i<=n;i++)v*=i;code='function fact(n):\n    if n <= 1:\n        return 1\n    return n * fact(n - 1)\nWhat is fact('+n+')?';ev='function fact(n){if(n<=1)return 1;return n*fact(n-1);}return fact('+n+');';return mcN(r,code,v,fill(r,v,[v/n,v*n,n*(n+1)/2]),ev);}
+  if(form==='fib'){n=ri(r,5,d<.85?9:12);var a=0,b2=1;for(var j=0;j<n;j++){var t=a+b2;a=b2;b2=t;}v=a;code='function fib(n):\n    if n <= 1:\n        return n\n    return fib(n - 1) + fib(n - 2)\nWhat is fib('+n+')? (fib(0) is 0 and fib(1) is 1.)';ev='function fib(n){if(n<=1)return n;return fib(n-1)+fib(n-2);}return fib('+n+');';var a1=0,b1=1;for(var j2=0;j2<n+1;j2++){var t2=a1+b1;a1=b1;b1=t2;}return mcN(r,code,v,fill(r,v,[a1,v-1,v+1]),ev);}
+  var A=ri(r,2,12)*ri(r,2,6),B=ri(r,2,12)*ri(r,2,6),g=function(x,y){return y===0?x:g(y,x%y);};v=g(A,B);
+  code='function gcd(a, b):\n    if b == 0:\n        return a\n    return gcd(b, a % b)\nWhat is gcd('+A+', '+B+')?';ev='function gcd(a,b){if(b==0)return a;return gcd(b,a%b);}return gcd('+A+','+B+');';
+  return mcN(r,code,v,fill(r,v,[Math.min(A,B),1,A%B]),ev);
+}
+/* --- dictionaries --- */
+function gDictq(r,d){
+  var names=shuffle(r,['Ann','Bo','Cy','Di','Eli','Fay','Gus']).slice(0,d<.4?3:4),vals=names.map(function(){return ri(r,3,d<.5?20:60);}),cur={},js='var ages={';
+  names.forEach(function(n,i){cur[n]=vals[i];js+=(i?',':'')+n+':'+vals[i];});js+='};';
+  var lines=['ages = {'+names.map(function(n){return '"'+n+'": '+cur[n];}).join(', ')+'}'];
+  var steps=d<.3?0:d<.6?1:d<.85?2:3;
+  for(var s=0;s<steps;s++){
+    var pickN=pick(r,names),op=pick(r,['inc','set','add']);
+    if(op==='inc'){var by=ri(r,1,9);cur[pickN]+=by;lines.push('ages["'+pickN+'"] = ages["'+pickN+'"] + '+by);js+='ages.'+pickN+'=ages.'+pickN+'+'+by+';';}
+    else if(op==='set'){var nv=ri(r,3,60);cur[pickN]=nv;lines.push('ages["'+pickN+'"] = '+nv);js+='ages.'+pickN+'='+nv+';';}
+    else{var nn=pick(r,['Zed','Max','Kim','Lou']);if(cur[nn]===undefined){var v2=ri(r,3,60);cur[nn]=v2;lines.push('ages["'+nn+'"] = '+v2);js+='ages.'+nn+'='+v2+';';}}
+  }
+  var keys=Object.keys(cur),kind=pick(r,d<.4?['get']:['get','count','sum','max']),ask,val,ev;
+  if(kind==='get'){var k=pick(r,keys);ask='What is ages["'+k+'"]?';val=cur[k];ev='return ages.'+k+';';}
+  else if(kind==='count'){ask='How many keys are in ages?';val=keys.length;ev='return Object.keys(ages).length;';}
+  else if(kind==='sum'){ask='What is the sum of all the values in ages?';val=keys.reduce(function(a,k2){return a+cur[k2];},0);ev='var t=0;for(var k in ages)t+=ages[k];return t;';}
+  else{ask='What is the biggest value in ages?';val=Math.max.apply(null,keys.map(function(k3){return cur[k3];}));ev='var m=0;for(var k in ages)m=Math.max(m,ages[k]);return m;';}
+  return mcN(r,lines.join('\n')+'\n'+ask,val,fill(r,val,keys.map(function(k4){return cur[k4];})),js+ev);
+}
+/* --- sorting and searching --- */
+function gSortq(r,d){
+  var n=d<.5?5:d<.8?6:7,arr=[],i;
+  while(arr.length<n){var x=ri(r,1,d<.6?30:99);if(arr.indexOf(x)<0)arr.push(x);}
+  var kind=d<.6?pick(r,['pass','sorted']):pick(r,['pass','sorted','bsearch','swaps']);
+  if(kind==='pass'||kind==='swaps'){
+    var a=arr.slice(),sw=0;for(i=0;i<a.length-1;i++){if(a[i]>a[i+1]){var t=a[i];a[i]=a[i+1];a[i+1]=t;sw++;}}
+    var jsb='var a='+lst(arr)+',sw=0;for(var i=0;i<a.length-1;i++){if(a[i]>a[i+1]){var t=a[i];a[i]=a[i+1];a[i+1]=t;sw++;}}';
+    var rule='Bubble sort: go from left to right. Whenever a number is bigger than the one to its right, swap them.';
+    if(kind==='swaps')return mcN(r,'list = '+lst(arr)+'\n'+rule+'\nHow many swaps happen during ONE pass?',sw,fill(r,sw,[sw+1,sw-1,arr.length-1]).filter(function(x){return x>=0;}),jsb+'return sw;');
+    var wrong=[lst(arr.slice().sort(function(p,q){return p-q;})),lst(arr),lst(arr.slice().reverse()),lst(arr.slice(1).concat([arr[0]]))];
+    return mcN(r,'list = '+lst(arr)+'\n'+rule+'\nWhat is the list after ONE pass?',lst(a),wrong,jsb+'return "["+a.join(", ")+"]";');
+  }
+  if(kind==='sorted'){
+    var s=arr.slice().sort(function(p,q){return p-q;}),w2=s.slice();var sw2=ri(r,0,n-2);var tt=w2[sw2];w2[sw2]=w2[sw2+1];w2[sw2+1]=tt;
+    return mcN(r,'list = '+lst(arr)+'\nWhat is the list after sorting it from smallest to largest?',lst(s),[lst(arr.slice().sort(function(p,q){return q-p;})),lst(w2),lst(arr)],'var a='+lst(arr)+';a.sort(function(p,q){return p-q;});return "["+a.join(", ")+"]";');
+  }
+  var m=ri(r,7,d<.9?11:15),sa=[],cur=ri(r,1,5);for(i=0;i<m;i++){sa.push(cur);cur+=ri(r,2,6);}
+  var target=pick(r,sa),lo=0,hi=m-1,steps=0;
+  while(lo<=hi){var mid=Math.floor((lo+hi)/2);steps++;if(sa[mid]===target)break;if(sa[mid]<target)lo=mid+1;else hi=mid-1;}
+  return mcN(r,'list = '+lst(sa)+' (already sorted)\nBinary search for '+target+': always check the middle item, using index = (low + high) // 2, then keep the left or right half. How many items are checked, counting the one that matches?',steps,fill(r,steps,[steps+1,steps-1,m]).filter(function(x){return x>0;}),'var a='+lst(sa)+',lo=0,hi=a.length-1,s=0;while(lo<=hi){var mid=Math.floor((lo+hi)/2);s++;if(a[mid]=='+target+')break;if(a[mid]<'+target+')lo=mid+1;else hi=mid-1;}return s;');
+}
+var GENS={arith:gArith,divmod:gDivmod,stridx:gStrIdx,strlen:gStrLen,strops:gStrops,index:gIndex,listq:gListq,bool:gBool,bin:gBin,hex:gHex,bits:gBits,bitsq:gBits,chain:gChain,ifq:gIfq,loopcount:gLoopcount,loopsum:gLoopsum,whileq:gWhile,nested:gNested,fnq:gFnq,recq:gRecq,dictq:gDictq,sortq:gSortq};
+/* ===== concept question banks (true/false and multiple choice) ===== */
+var RAW={
+print:[['tf','Text you want to show must go inside quote marks.',true],['tf','Printing means showing a message on the screen.',true],['tf','A computer runs the bottom line first and the top line last.',false],
+ ['mc','What does a print command do?','Shows text on the screen','Saves a file','Turns the computer off','Draws a picture'],
+ ['mc','A program has two print lines. Which message appears first?','The one on the top line','The one on the bottom line','The longest one','It is random'],
+ ['tf','Print commands can show numbers as well as text.',true],
+ ['mc','What are quote marks used for in a print line?','To mark where the text starts and ends','To make the text louder','To delete text','To add colour'],
+ ['tf','Changing the words inside the quotes changes the message that is shown.',true],
+ ['mc','What happens when you run a program?','The computer follows the instructions','The code is deleted','The screen turns off','Nothing happens'],
+ ['tf','If you forget a closing quote mark, the computer usually shows an error.',true]],
+'var':[['mc','What is a variable?','A named box that holds a value','A kind of error','A loop','A screen'],['tf','You choose the name of your variable.',true],['tf','A good variable name describes what it holds, like score.',true],
+ ['mc','x = 5 and then x = 8. What does x hold now?','8','5','13','Nothing'],['tf','Storing a new value in a variable replaces the old one.',true],
+ ['mc','Which name describes a player\'s points best?','score','s1','thing','q'],['tf','In most languages, a variable name can start with a number like 3dogs.',false],
+ ['mc','After the line count = 4, what does count = count + 1 make count?','5','4','1','41'],['tf','Variable names with spaces, like my score, are allowed in most languages.',false],
+ ['mc','What does it mean to assign a value?','To store it in a variable','To delete it','To print it','To compile it']],
+text:[['tf','A piece of text in code is called a string.',true],['tf','The quote marks around text are shown on the screen when it prints.',false],
+ ['mc','What does joining two pieces of text do?','Makes one longer piece of text','Deletes both','Turns them into numbers','Draws a line'],['mc','How many characters are in the text “Hi!”?','3','2','4','1'],
+ ['tf','Spaces count as characters in a string.',true],['mc','Which of these is a string?','"42"','42','true','[4, 2]'],
+ ['tf','The text "7" and the number 7 are the same thing in most languages.',false],['mc','What does an empty string contain?','No characters','The number 0','The word empty','A space']],
+bool:[['mc','Which one is a Boolean value?','true','7','“hello”','[1, 2]'],['tf','5 > 3 is true.',true],['tf','2 == 3 is true.',false],['mc','NOT true equals…','false','true','1','0'],
+ ['tf','AND is true only when both sides are true.',true],['tf','OR is true when at least one side is true.',true],['mc','How many different Boolean values are there?','2','3','10','100'],['tf','10 != 4 is true.',true]],
+'if':[['tf','An if statement runs its code only when the condition is true.',true],['mc','What does else mean?','What to do when the condition is false','Stop the program','Repeat forever','Print an error'],
+ ['tf','A program can only ever have one if statement.',false],['mc','Which of these is a condition?','score > 10','“hello”','print','loop'],
+ ['tf','In an else-if chain, the first true condition runs and the rest are skipped.',true],['mc','age = 5. Does the condition age >= 13 hold?','No, it is false','Yes, it is true','It causes an error','It depends on the language'],
+ ['tf','An if can be placed inside another if.',true],['mc','What does if x == 3 do when x is 4?','Skips the code inside','Runs the code inside','Changes x to 3','Shows an error']],
+list:[['mc','In most languages, what is the index of the first item in a list?','0','1','-1','2'],['tf','A list can hold many values under one name.',true],['mc','items = [7, 8, 9]. How many items are in the list?','3','2','4','9'],
+ ['tf','In most languages, index 2 is the second item.',false],['mc','What does appending to a list do?','Adds an item at the end','Deletes the first item','Sorts the list','Prints the list'],
+ ['tf','Lists can hold text as well as numbers.',true],['mc','A list has 5 items. What is the index of the last item?','4','5','6','0'],['tf','Looping over a list visits every item in order.',true]],
+fn:[['tf','A function can be used again and again.',true],['mc','What is a value you give to a function called?','A parameter (or argument)','A bug','A comment','A loop'],
+ ['mc','What does return do?','Sends a result back to the code that called the function','Restarts the computer','Deletes the function','Prints a bug'],
+ ['tf','With a function, you must retype its code every time you want to use it.',false],['mc','What is calling a function?','Running it','Deleting it','Renaming it','Commenting it out'],
+ ['tf','A function can call another function.',true],['mc','A function has no return line. What do many languages give back?','Nothing, or a special empty value','The number 1','An error always','The function name'],
+ ['tf','Variables created inside a function usually cannot be used outside it.',true]],
+bug:[['mc','What is a bug?','A mistake in a program','A computer part','A fast loop','A comment'],['mc','Which kind of error means the code broke the grammar rules?','Syntax error','Runtime error','Logic error','Hardware error'],
+ ['tf','Error messages usually tell you which line has the problem.',true],['tf','When debugging, it is smart to change many things at once.',false],
+ ['mc','The program runs but gives the wrong answer. What kind of bug is this?','Logic error','Syntax error','Typing error','Power error'],['tf','Reading the error message carefully helps you fix the bug.',true],
+ ['mc','What is debugging?','Finding and fixing mistakes','Writing comments','Deleting a program','Running faster'],['tf','A program that crashes while running has a runtime error.',true]],
+dict:[['mc','What does a dictionary store?','Pairs of keys and values','Only numbers','Only text','Nothing at all'],['tf','In a dictionary, each key should be unique.',true],
+ ['mc','prices = {"pen": 2}. What is prices["pen"]?','2','"pen"','pen: 2','An error'],['tf','You look up a value in a dictionary by using its key.',true],
+ ['mc','Which is a good use of a dictionary?','A phone book from names to numbers','Counting to ten','Printing a line','Repeating code'],
+ ['tf','Asking a dictionary for a key that does not exist is often an error.',true],['mc','Dictionaries are called maps in some languages. What does that mean?','Keys map to values','They draw maps','They store locations only','They are always sorted'],
+ ['tf','A dictionary value can be a list.',true]],
+recursion:[['mc','What is recursion?','A function that calls itself','A loop that never ends','A kind of variable','A type of error'],['tf','Every recursive function needs a base case that stops it.',true],
+ ['mc','What happens if a recursive function has no base case?','It keeps calling itself until the program runs out of space','It returns 0','It runs faster','It politely prints a message'],
+ ['tf','The base case of factorial is fact(1) = 1 (or fact(0) = 1).',true],['mc','Which part moves the problem closer to the base case?','The recursive call with a smaller input','The comment','The print line','The file name'],
+ ['tf','Anything a recursive function does can also be written with a loop.',true],['mc','What is the call stack?','The list of function calls that are waiting to finish','A stack of files','A list of errors','A sort order'],
+ ['tf','Calling fib(30) with two plain recursive calls is slow because it repeats lots of work.',true]],
+sorting:[['mc','What is sorting?','Putting items in order','Deleting items','Counting items','Copying items'],['tf','Binary search needs the list to be sorted first.',true],
+ ['mc','About how many checks does binary search need for 1000 sorted items?','About 10','About 100','About 500','About 1000'],['tf','Bubble sort repeatedly swaps neighbours that are in the wrong order.',true],
+ ['mc','Which search checks items one by one from the start?','Linear search','Binary search','Hash search','Tree search'],['tf','Using a built-in sort function is usually better than writing your own.',true],
+ ['mc','After one full pass of bubble sort, which item is in its final place?','The biggest one at the end','The smallest one at the start','The middle one','None of them'],['tf','Bubble sort is the fastest sort for huge lists.',false]],
+bits:[['mc','How many bits are in a byte?','8','4','16','10'],['tf','The hexadecimal digit F is 15 in everyday numbers.',true],['mc','What is 1 AND 1 in binary logic?','1','0','2','11'],
+ ['tf','Shifting a number left by 1 bit doubles it.',true],['mc','What does XOR give for two bits that are different?','1','0','2','An error'],['tf','Computers store text as numbers too.',true],
+ ['mc','How many different values can 8 bits hold?','256','8','64','100'],['tf','Hexadecimal uses 16 different digits.',true]],
+bigo:[['mc','What is the time complexity of looping once through a list of n items?','O(n)','O(1)','O(log n)','O(n²)'],['mc','Which of these grows the slowest as n gets bigger?','O(log n)','O(n)','O(n²)','O(2ⁿ)'],
+ ['tf','A loop inside another loop over the same n items is usually O(n²).',true],['mc','On average, looking up one key in a good hash table is…','O(1)','O(n)','O(n²)','O(log n)'],
+ ['tf','Big-O describes how the work grows as the input grows.',true],['mc','Binary search on a sorted list of n items is…','O(log n)','O(n)','O(n²)','O(1)'],
+ ['tf','O(n²) is usually faster than O(n) for big n.',false],['mc','Reading the first item of a list is…','O(1)','O(n)','O(log n)','O(n²)'],
+ ['tf','Big-O usually ignores small constant factors, so 3n and n are both O(n).',true],['mc','Checking every pair of items in a list of n items is about…','n² steps','n steps','log n steps','1 step']],
+oop:[['mc','What is a class?','A blueprint for making objects','A kind of loop','A file type','A comment style'],['mc','What is an object?','A thing made from a class, with its own data','A function parameter','A syntax error','A comment'],
+ ['tf','An object can have data (attributes) and actions (methods).',true],['mc','What is a method?','A function that belongs to an object or class','A kind of list','A type of error','A variable name'],
+ ['tf','Inheritance lets one class reuse and extend another class.',true],['mc','What is encapsulation?','Keeping an object\'s data and actions together and hiding the details','Printing objects','Looping over objects','Deleting objects'],
+ ['tf','Two objects made from the same class always share exactly the same data.',false],['mc','What does a constructor usually do?','Sets up a new object','Deletes an object','Prints an object','Sorts objects'],
+ ['tf','Polymorphism means different objects can respond to the same method name in their own way.',true],['mc','A Dog class and a Cat class both have speak(). This is an example of…','Polymorphism','A bug','A loop','A comment']],
+errors:[['mc','What does try/catch (or try/except) do?','Handles an error without crashing','Speeds up code','Declares a variable','Prints a list'],['tf','An exception is a problem that happens while a program is running.',true],
+ ['mc','Which error happens when you divide by zero?','A runtime error','A syntax error','A comment error','A typing speed error'],['tf','A finally block runs whether or not an error happened.',true],
+ ['mc','What is a stack trace?','A list of the calls that led to an error','A kind of loop','A sorted list','A type of file'],['tf','It is good practice to catch an error and ignore it silently.',false],
+ ['mc','What is the best first step when you see an error message?','Read it and find the line it mentions','Delete the file','Restart the computer','Ignore it'],['tf','You can raise (throw) your own error when something is wrong.',true],
+ ['mc','Checking input before using it is called…','Validation','Compilation','Recursion','Sorting'],['tf','Tests help you find bugs before your users do.',true]],
+stack:[['mc','A stack works like…','A pile of plates: last in, first out','A line at a shop','A phone book','A mirror'],['mc','A queue works like…','A line at a shop: first in, first out','A pile of plates','A dictionary','A tree'],
+ ['tf','The undo button in many apps uses a stack.',true],['mc','Which structure holds no repeated items?','A set','A list','A queue','A stack'],['tf','In a tree, each item can have child items below it.',true],
+ ['mc','What do we call the top item of a tree?','The root','The leaf','The key','The index'],['tf','A graph is made of nodes joined by edges.',true],
+ ['mc','Which structure suits a web browser\'s back button best?','A stack','A queue','A set','A dictionary'],['tf','A print queue serves documents in the order they arrive.',true],
+ ['mc','Adding an item to a stack is often called…','push','pop','peek','sort']],
+algo:[['mc','What is an algorithm?','Step-by-step instructions to solve a problem','A programming language','A kind of computer','A website'],['tf','Breaking a big problem into smaller ones is a key coding skill.',true],
+ ['mc','What is an edge case?','An unusual input that may break your code','The last line of a file','A fast loop','A syntax rule'],['tf','Writing the steps in plain words first can make coding easier.',true],
+ ['mc','Checking a list from both ends toward the middle is called…','Two pointers','Recursion','Hashing','Typing'],['tf','A greedy algorithm always picks the best-looking option at each step.',true],
+ ['mc','Dynamic programming mainly helps by…','Remembering answers so they are not recomputed','Printing faster','Avoiding variables','Making files smaller'],['tf','You should test your code with empty and very large inputs too.',true],
+ ['mc','Pseudocode is…','Plain-language steps that look like code','Broken code','A compiled file','A kind of comment'],['tf','The first working solution is always the fastest possible one.',false]],
+types:[['mc','What does a type tell you?','What kind of value something is','How fast it runs','Who wrote it','Where it is stored on disk'],['tf','In a statically typed language, types are checked before the program runs.',true],
+ ['mc','With text joining, "5" + "3" gives…','"53"','8','"8"','An error always'],['tf','Converting the text "42" into the number 42 is called casting or parsing.',true],
+ ['mc','What is integer overflow?','A number too big for its storage wraps around or errors','A very long loop','A stack of calls','An empty list'],['tf','Floating point numbers can have tiny rounding errors, like 0.1 + 0.2.',true],
+ ['mc','What is garbage collection?','Automatically freeing memory that is no longer used','Deleting your files','Sorting data','Compressing text'],['tf','An immutable value cannot be changed after it is created.',true],
+ ['mc','null (or None, nil) usually means…','No value','The number zero','The empty text','True'],['tf','A typed language can never have bugs.',false]],
+concur:[['mc','What is concurrency?','Making progress on several tasks at overlapping times','Running one task twice','Sorting very fast','Compiling code'],['tf','A race condition happens when the timing of tasks changes the result.',true],
+ ['mc','What is a deadlock?','Tasks waiting on each other forever','A locked file','A deleted variable','A slow loop'],['tf','An API lets programs talk to each other.',true],
+ ['mc','What does HTTP mainly do?','Moves requests and pages between browsers and servers','Sorts lists','Compiles code','Draws images'],['tf','JSON is a text format for storing data like lists and dictionaries.',true],
+ ['mc','What is a thread?','A path of execution inside a program','A kind of file','A CSS rule','A type of variable'],['tf','Async code lets a program wait for slow things without freezing.',true],
+ ['mc','What does a server do?','Answers requests from other computers','Prints pages','Writes comments','Stores your keyboard'],['tf','Two threads changing the same variable at once can cause bugs.',true]],
+master:[['mc','What makes code clean?','Clear names and simple steps','Very long lines','No comments ever','Short secret names'],['tf','Reading other people\'s code is a great way to improve.',true],
+ ['mc','What is refactoring?','Improving code without changing what it does','Adding bugs on purpose','Deleting tests','Renaming the language'],['tf','Small functions that do one job are easier to test.',true],
+ ['mc','What is a code review?','Other people read your changes and give feedback','Running code twice','A syntax check only','Writing a report'],['tf','Version control like Git lets you go back to earlier versions of your code.',true],
+ ['mc','What is a unit test?','A small test of one piece of code','A test of a whole company','A kind of loop','A comment'],['tf','DRY means Do Not Repeat Yourself.',true],
+ ['mc','Which is the best way to learn a new language fast?','Build small projects','Only read about it','Memorize everything','Avoid mistakes'],['tf','Premature optimization means making code fast before you know it is a problem.',true]]
+};
+function bankQuiz(r,name,d){
+  if(name==='basic')return conceptQuiz(r,d<.3?0:d<.65?1:2);
+  var it=pick(r,RAW[name]);
+  if(it[0]==='tf')return {k:'tf',q:it[1],a:it[2]};
+  return mc(r,it[1],it[2],it.slice(3));
+}
+
+/* ===== course plan: each topic lists the 10 quiz slots of its levels ===== */
+var INTRO=[['meet',1],['print',2],['print2',3],['comment',4],['variable',5],['numbers',6],['text',7],['truefalse',8],['ifs',9],['loop',10],['lists',11],['function',12],['bugs',13],['binary',14],
+ ['elseif',20],['whileloop',30],['strings2',45],['math2',60],['dict',80],['nested',100],['listops',125],['fn2',150],['recursion',200],['sorting',260],['bits',330],['bigo',400],['oop',480],['errors',560],['stack',640],['algo',720],['types',800],['concur',880],['master',950]];
+var UNTIL={meet:30,print:50,print2:50,comment:90,variable:200,numbers:300,text:300,truefalse:400};
+var PLAN={
+ meet:['w:say','w:say','w:say','tf:year','tf:creator','mc:use','mc:ext','mc:hello','g:basic','g:basic'],
+ print:['w:say','w:say','w:say','tf:say','tf:say','mc:hello','mc:hello','mc:year','bank:print','g:basic'],
+ print2:['w:say','w:say:2','w:say','tf:say','tf:say','mc:hello','mc:hello','mc:ext','bank:print','g:basic'],
+ comment:['w:cmt','w:cmt','w:say','tf:cmt','tf:cmt','mc:cmt','mc:cmt','mc:hello','g:basic','g:basic'],
+ variable:['w:var','w:var','w:say','tf:var','tf:var','mc:var','mc:var','mc:cmt','g:chain','bank:var'],
+ numbers:['w:say','w:cmt','w:var','tf:say','tf:cmt','mc:var','mc:hello','mc:cmt','g:arith','g:divmod'],
+ text:['w:say','w:say','w:cmt','tf:say','tf:cmt','mc:hello','mc:cmt','mc:var','g:strlen','bank:text'],
+ truefalse:['w:say','w:var','w:cmt','tf:say','tf:var','mc:var','mc:cmt','mc:hello','g:bool','bank:bool'],
+ ifs:['w:say','w:cmt','w:var','tf:say','tf:cmt','mc:hello','mc:var','mc:cmt','g:ifq','bank:if'],
+ loop:['w:say','w:var','w:cmt','tf:say','tf:var','mc:loop','mc:loop','mc:hello','g:loopsum','g:loopcount'],
+ lists:['w:say','w:var','w:cmt','tf:say','tf:cmt','mc:var','mc:hello','mc:cmt','g:index','bank:list'],
+ 'function':['w:say','w:var','w:cmt','tf:fk','tf:say','mc:fk','mc:hello','mc:var','g:fnq','bank:fn'],
+ bugs:['w:say','w:cmt','w:var','tf:say','tf:cmt','mc:hello','mc:cmt','mc:var','bank:bug','bank:bug'],
+ binary:['w:say','w:cmt','w:var','tf:year','tf:say','mc:hello','mc:cmt','mc:var','g:bin','g:bin'],
+ elseif:['w:say','w:cmt','w:var','tf:say','tf:cmt','mc:var','mc:hello','g:ifq','g:ifq','bank:if'],
+ whileloop:['w:say','w:cmt','w:var','tf:var','tf:say','mc:loop','mc:hello','g:whileq','g:loopsum','g:chain'],
+ strings2:['w:say','w:cmt','w:var','tf:say','tf:cmt','mc:hello','mc:var','g:stridx','g:strlen','bank:text'],
+ math2:['w:say','w:var','w:cmt','tf:var','tf:say','mc:var','mc:hello','g:arith','g:divmod','g:chain'],
+ dict:['w:say','w:var','w:cmt','tf:say','tf:var','mc:var','mc:hello','g:dictq','g:dictq','bank:dict'],
+ nested:['w:say','w:cmt','w:var','tf:say','tf:var','mc:loop','mc:hello','g:nested','g:nested','g:loopsum'],
+ listops:['w:say','w:var','w:cmt','tf:cmt','tf:say','mc:var','mc:hello','g:listq','g:listq','g:index'],
+ fn2:['w:say','w:var','w:cmt','tf:fk','tf:say','mc:fk','mc:hello','g:fnq','g:fnq','bank:fn'],
+ recursion:['w:say','w:var','w:cmt','tf:fk','tf:say','mc:fk','mc:hello','g:recq','g:recq','bank:recursion'],
+ sorting:['w:say','w:var','w:cmt','tf:say','tf:cmt','mc:hello','mc:var','g:sortq','g:sortq','bank:sorting'],
+ bits:['w:say','w:var','w:cmt','tf:year','tf:say','mc:hello','mc:var','g:bitsq','g:hex','bank:bits'],
+ bigo:['w:say','w:var','w:cmt','tf:say','tf:cmt','mc:hello','g:nested','bank:bigo','bank:bigo','g:loopsum'],
+ oop:['w:say','w:var','w:cmt','tf:ty','tf:say','mc:hello','g:fnq','bank:oop','bank:oop','bank:oop'],
+ errors:['w:say','w:var','w:cmt','tf:say','tf:cmt','mc:hello','g:ifq','bank:errors','bank:errors','bank:bug'],
+ stack:['w:say','w:var','w:cmt','tf:say','tf:cmt','mc:hello','g:listq','bank:stack','bank:stack','g:dictq'],
+ algo:['w:say','w:var','w:cmt','tf:say','tf:cmt','mc:hello','g:sortq','bank:algo','bank:algo','g:recq'],
+ types:['w:say','w:var','w:cmt','tf:ty','tf:say','mc:hello','g:bitsq','bank:types','bank:types','g:strops'],
+ concur:['w:say','w:var','w:cmt','tf:say','tf:cmt','mc:hello','g:nested','bank:concur','bank:concur','g:whileq'],
+ master:['w:say','w:var','w:cmt','tf:say','tf:cmt','mc:hello','g:chain','g:recq','g:sortq','bank:master']
+};
+function introTopic(level){for(var i=0;i<INTRO.length;i++)if(INTRO[i][1]===level)return INTRO[i][0];return null;}
+function learnedTopics(level){
+  return INTRO.filter(function(x){return x[1]<level&&!(UNTIL[x[0]]&&level>UNTIL[x[0]]);}).map(function(x){return x[0];});
+}
+function topicOf(level){
+  var t=introTopic(level);if(t)return {topic:t,review:false};
+  var L=learnedTopics(level),r=rng(hashStr('focus#'+level)),pool=r()<0.5?L.slice(-3):L;
+  return {topic:pick(r,pool),review:true};
+}
+
+/* ===== building one level ===== */
+function mkTF(L,type,r){if((type==='fk'&&!L.fk)||(type==='var'&&!L.vr)||(type==='ty'&&!L.ty))type='cmt';return tfQuiz(L,type,r);}
+function mkMC(L,type,r){if((type==='fk'&&!L.fk)||(type==='var'&&!L.vr))type='cmt';if(type==='loop'&&!L.lp)type='hello';return mcQuiz(L,type,r);}
+function buildSpec(L,spec,r,tx,ctx){
+  var p=spec.split(':'),t=p[0],q;
+  if(t==='w'){var i=Math.min(ctx.wi++,2),n=Math.max(ctx.wl[i],p[2]?+p[2]:1);return writeMulti(L,n,p[1],r,tx,DIFF);}
+  if(t==='tf')return mkTF(L,p[1],r);
+  if(t==='mc')return mkMC(L,p[1],r);
+  if(t==='bank')return bankQuiz(r,p[1],DIFF);
+  if(p[1]==='basic')return bankQuiz(r,'basic',DIFF);
+  q=GENS[p[1]](r,DIFF);
+  if(q.a===-1)q.a=q.opts.indexOf(q._ans);
+  return q;
+}
+function genLevel(L,level,attempt){
+  var r=rng(hashStr(L.n+'#'+level+'#'+(attempt||0)));
+  DIFF=diffOf(level);
+  var ft=topicOf(level),plan=PLAN[ft.topic].slice();
+  if(ft.review){
+    var pool=[];learnedTopics(level).forEach(function(tp){PLAN[tp].forEach(function(s){if(/^(g|bank):/.test(s)&&s!=='g:basic')pool.push(s);});});
+    if(pool.length){plan[8]=pick(r,pool);plan[9]=pick(r,pool);}
+  }
+  var tp=textPool(DIFF),tx={i:0,j:0,list:shuffle(r,tp),names:shuffle(r,NAMES),
+    next:function(){var x=this.list[this.i%this.list.length];this.i++;return x;},
+    name:function(){var x=this.names[this.j%this.names.length];this.j++;return x;}};
+  var ctx={wi:0,wl:wlines(level)},seen={},out=[];
+  plan.forEach(function(spec){
+    var q;
+    for(var i=0;i<14;i++){q=buildSpec(L,spec,r,tx,ctx);if(!seen[q.q])break;if(spec.charAt(0)==='w')ctx.wi--;}
+    seen[q.q]=1;out.push(q);
+  });
+  return shuffle(r,out);
+}
+/* ===== lessons: beginner topics first, then advanced topics as the levels climb ===== */
+var LEVELUP=[
+  'Say the code out loud in plain words. If you can explain a line, you understand it.',
+  'Change one small thing in an example, then predict what will happen. That is how programmers learn.',
+  'Mistakes are normal. Every programmer sees error messages every day.',
+  'Type the code yourself instead of copying it. Your fingers learn the pattern.',
+  'Short practice every day beats one long session once a week.',
+  'When code surprises you, slow down and read it one line at a time, top to bottom.',
+  'Good names make code easy to read. Pick names that say what the value is.',
+  'Take a break when you are stuck. Many bugs look obvious after a rest.'
+];
+function lessonBody(L,topic,level,review){
+  var r=rng(hashStr(L.n+'@lesson#'+level));
+  var tl=shuffle(r,TEXTS),t1=tl[0],t2=tl[1],nl=shuffle(r,NAMES),n1=nl[0],n2=nl[1];
+  var v1=ri(r,2,99),v2=ri(r,2,99),title='',b=[];
+  function P(x){b.push({k:'p',t:x});}
+  function C(code,lab){b.push({k:'code',t:code,l:lab||''});}
+  function PT(p){b.push({k:'parts',t:p});}
+  function OUT(x,lab){b.push({k:'out',t:x,l:lab||'What you will see'});}
+  function TIP(x){b.push({k:'tip',t:x});}
+  var pre=review?'Review: ':'';
+  var note={'HTML':'HTML is a markup language. Instead of giving step-by-step commands, it describes what a web page contains.','CSS':'CSS is a style language. It describes how a web page looks: colors, sizes and spacing. It works together with HTML.','SQL':'SQL is a query language. You use it to ask a database questions, and the database answers.'}[L.n];
+  var IDEA='The idea (each language spells it a little differently)';
+
+  if(topic==='meet'){
+    if(!review){
+      title='Meet '+L.n;
+      P('Welcome! Coding means writing instructions for a computer. The instructions are written in a programming language, and you are about to learn one called '+L.n+'.');
+      P(L.n+' first appeared in '+L.y+'. It was created by '+L.by+'. People mostly use it for '+L.use+'.');
+      if(note)P(note);
+      P('Files you write in '+L.n+' usually end in '+L.ex+'. The ending tells the computer which language is inside.');
+      P('A program is a list of instructions. The computer follows them from the top line to the bottom line, one at a time. Here is the classic first program. It shows the words “Hello, World!” on the screen:');
+      C(sayText(L,'Hello, World!'));PT(explainSay(L,'Hello, World!'));
+      TIP('You do not need to memorize anything yet. Read the lesson, then try the quizzes. You will see everything again and again. In a full program, some languages need a little extra setup around this line. Here we focus on the line itself.');
+    }else{
+      title=pre+'A fact about '+L.n;
+      var facts=[L.n+' first appeared in '+L.y+'.',L.n+' was created by '+L.by+'.',L.n+' is mostly used for '+L.use+'.','Files written in '+L.n+' usually end in '+L.ex+'.'];
+      P(facts[level%facts.length]);if(note)P(note);
+      P('Here is a line of '+L.n+' that shows some text:');C(sayText(L,t1));PT(explainSay(L,t1));
+    }
+  }else if(topic==='print'){
+    title=pre+'Showing text on the screen';
+    P('The most common first job for a program is to show a message. This is called printing, even though nothing goes onto paper. In '+L.n+' it looks like this:');
+    C(sayText(L,t1));PT(explainSay(L,t1));OUT(t1);
+    P('Look for the pattern: the command first, then the text inside quote marks. Change the words between the quotes and the message on the screen changes too.');
+    TIP('Text always needs quote marks. Without them, '+L.n+' thinks your words are commands and shows an error.');
+  }else if(topic==='print2'){
+    title=pre+'Two lines, one after another';
+    P('A program runs from the top line to the bottom line, one instruction at a time. Here are two instructions:');
+    C(sayText(L,t1)+'\n'+sayText(L,t2));
+    PT([['Line 1','Runs first. It shows “'+t1+'”.'],['Line 2','Runs second. It shows “'+t2+'”.']]);
+    OUT(t1+'\n'+t2);P(endMarkText(L));
+    TIP('Order matters. If you swap the two lines, the messages appear in the opposite order.');
+  }else if(topic==='comment'){
+    title=pre+'Notes for humans: comments';
+    P('A comment is a note you leave inside your code. The computer skips it completely. Comments explain what the code is for, to you and to other people. In '+L.n+', a comment looks like this:');
+    C(fillTpl(L.cm[0],{t:t1}));PT(symbolParts(L,t1));
+    P('Here a comment sits above a real instruction. Only the second line does anything:');
+    C(fillTpl(L.cm[0],{t:t1})+'\n'+sayText(L,t2));OUT(t2);
+    TIP('A good comment explains why the code does something, not just what it does.');
+  }else if(topic==='variable'){
+    if(L.vr){
+      title=pre+'Variables: boxes with names';
+      P('A variable is a labeled box where a program keeps a value, such as a number or some text. You choose the name. Later, the program can look inside the box whenever it needs the value. In '+L.n+':');
+      C(varText(L,n1,v1));PT(explainVar(L,n1,v1));
+      P('This stores '+v1+' in a box called '+nameFor(L,n1)+'. Later lines can use that name to get the '+v1+' back. Here is the same idea with a different name and value:');
+      C(varText(L,n2,v2));
+      TIP('Choose names that describe what is inside, like score or price. A name like x tells nobody anything.');
+    }else{
+      title=pre+'Attributes: extra information';
+      P('HTML does not have variables like other languages do. Instead, a tag can carry extra information called an attribute.');
+      C('<p class="note">'+t1+'</p>');
+      PT([['<p','The opening tag: a paragraph starts.'],['class="note"','An attribute. The name is class and the value is note. It gives the paragraph a label that style rules can use.'],['>'+t1+'</p>','The words people see, then the closing tag.']]);
+      TIP('Attribute values go inside quote marks, just like text in other languages.');
+    }
+  }else if(topic==='numbers'){
+    var a=ri(r,3,9),bb=ri(r,2,6);
+    title=pre+'Numbers and math';
+    P('Computers are very good at math. Almost every language uses the same signs for it. These lines show the idea:');
+    C(a+' + '+bb+'     gives '+(a+bb)+'\n'+(a+bb)+' - '+bb+'     gives '+a+'\n'+a+' * '+bb+'     gives '+(a*bb)+'\n'+(a*bb)+' / '+bb+'     gives '+a,'The idea (works in almost every language)');
+    PT([['+','Add.'],['-','Subtract.'],['*','Multiply. The star is used because × is not on the keyboard.'],['/','Divide.'],['%','Remainder after dividing. 7 % 3 is 1, because 3 fits into 7 twice with 1 left over.']]);
+    P('Order of operations works like in math class. Multiplication and division happen before addition and subtraction. So 2 + 3 * 4 is 14, not 20. Brackets go first: (2 + 3) * 4 is 20.');
+    TIP('If you are not sure about the order, add brackets. They make your meaning clear to the computer and to people.');
+  }else if(topic==='text'){
+    title=pre+'Text, also called strings';
+    P('A piece of text in code is called a string. It is a row of characters inside quote marks. Letters, digits, spaces and symbols all count as characters.');
+    C('"Hello"            has 5 characters\n"Hi there"          has 8 characters\n"Hel" + "lo"        makes "Hello"','The idea (details differ by language)');
+    PT([['"Hello"','A string. The quote marks are not part of the text.'],['5 characters','The length of a string is how many characters it holds. Spaces count.'],['+','In many languages, joining two strings together makes one longer string.']]);
+    TIP('"7" in quotes is text, and 7 without quotes is a number. They behave differently.');
+  }else if(topic==='truefalse'){
+    var big=ri(r,6,20),small=ri(r,1,5);
+    title=pre+'True or false: Booleans';
+    P('Some questions have only two answers: yes or no. In code these answers are called Booleans, and they are written true and false. Programs use them to make decisions.');
+    C(big+' > '+small+'          is true\n'+small+' > '+big+'          is false\n'+big+' == '+big+'        is true\ntrue AND false   is false\ntrue OR false    is true\nNOT true         is false','The idea (works in almost every language)');
+    PT([['>','Greater than. It asks “is the left side bigger?”'],['==','Is equal to. Two equals signs ask a question. One equals sign would store a value.'],['AND','True only when both sides are true.'],['OR','True when at least one side is true.'],['NOT','Flips true to false and false to true.']]);
+    TIP('Spelling changes between languages. Some use && for AND, || for OR and ! for NOT. The idea is identical.');
+  }else if(topic==='ifs'){
+    var th=ri(r,10,18),val=ri(r,5,24);
+    title=pre+'Decisions: if and else';
+    P('Programs can choose what to do. You ask a question, and the answer decides which instructions run. This idea is called a conditional.');
+    C('age = '+val+'\nif age >= '+th+':\n    show "big"\nelse:\n    show "small"',IDEA);
+    PT([['if age >= '+th,'The question, called the condition. If the answer is yes, the lines under it run.'],['show "big"','Runs only when the answer is yes.'],['else','Means “otherwise”. The lines under it run when the answer is no.']]);
+    OUT('Because '+val+(val>=th?' is '+th+' or more':' is less than '+th)+', the program shows: '+(val>=th?'big':'small'));
+    TIP('Every language uses the same idea: ask a question, then choose. Only the punctuation changes.');
+  }else if(topic==='loop'){
+    var nn=ri(r,3,6);
+    title=pre+'Loops: repeat without retyping';
+    P('A loop repeats instructions. Instead of writing the same line five times, you write it once and tell the computer how many times to repeat it. In '+L.n+', the start of a loop looks like this:');
+    if(L.lp){C(fillTpl(L.lp,{n:nn}));PT(explainLoop(L,nn));}
+    else P(L.n+' does not have a classic loop line like many languages do. It works in a different way, but the idea of repeating work is the same.');
+    var rounds='';for(var i=1;i<=nn;i++)rounds+=(i>1?'\n':'')+'Round '+i;
+    OUT(rounds,'If the loop repeats '+nn+' times');
+    TIP('A loop that never ends is called an infinite loop. Always make sure the loop has a way to stop.');
+  }else if(topic==='lists'){
+    var la=ri(r,10,99),lb=ri(r,10,99),lc=ri(r,10,99);
+    title=pre+'Lists: many values under one name';
+    P('A list holds many values under one name. Each value has a position number called an index. Most languages start counting at 0, not 1.');
+    C('items = ['+la+', '+lb+', '+lc+']\nitems[0]   is '+la+'\nitems[1]   is '+lb+'\nitems[2]   is '+lc,'The idea (square brackets are common)');
+    PT([['[ ]','Square brackets hold the whole list.'],['items[0]','The first item. The number in brackets is the index.'],['3 values','The list has 3 values, but the last index is 2, because counting starts at 0.']]);
+    TIP('Counting from 0 feels strange at first. Everyone gets used to it.');
+  }else if(topic==='function'){
+    var fx=ri(r,2,9);
+    title=pre+'Functions: reusable recipes';
+    P('A function is a named set of instructions that you can use again and again. It can take inputs and give back a result. Think of it as a recipe card: write it once, use it whenever you like.');
+    C('function double(x):\n    return x * 2\n\ndouble('+fx+')   gives '+(fx*2),IDEA);
+    PT([['function double(x)','Creates a function named double. The x is the input, called a parameter.'],['return x * 2','Sends the result back to whoever used the function.'],['double('+fx+')','Uses the function with the input '+fx+'. This is called a call.']]);
+    P(L.fk?'In '+L.n+', the word that starts a function is “'+L.fk+'”.':L.n+' has its own way to write functions, with a name, inputs and a result. The idea is the same.');
+    TIP('If you write the same steps twice, put them in a function instead.');
+  }else if(topic==='bugs'){
+    title=pre+'Bugs and error messages';
+    P('A bug is a mistake in a program. Every programmer makes bugs every day. Finding and fixing them is called debugging. Here is a line with a bug. The closing quote mark is missing:');
+    var okline=sayText(L,t1),broken=okline.replace(/["'](?=[^"']*$)/,'');
+    C(broken,'Broken');
+    P('The computer cannot understand this line, so it shows an error message instead of running the program. The message usually names the line with the problem. Here is the fixed line:');
+    C(okline,'Fixed');
+    PT([['Syntax error','The code broke the grammar rules, so the program will not start.'],['Runtime error','The program starts, then crashes, for example by dividing by zero.'],['Logic error','The program runs but gives the wrong answer. These are the hardest to spot.']]);
+    TIP('Read the error message from the top. Fix one thing at a time and run the program again after each change.');
+  }else if(topic==='binary'){
+    var bn=ri(r,3,15);
+    title=pre+'Binary: how computers count';
+    P('Inside a computer, everything is stored using only two digits: 0 and 1. Each one is called a bit. Eight bits together make a byte. Binary is just counting with two digits instead of ten.');
+    C('place values:   8  4  2  1\nbinary:         '+((bn>>3)&1)+'  '+((bn>>2)&1)+'  '+((bn>>1)&1)+'  '+(bn&1)+'\nadd up the places with a 1  =  '+bn,'Reading binary '+bn.toString(2));
+    PT([['bit','One binary digit: a 0 or a 1.'],['place values','Each place is worth double the one to its right: 1, 2, 4, 8, 16 and so on.'],['byte','8 bits. Enough for 256 different values, from 0 to 255.']]);
+    TIP('To read binary, add up the place values that have a 1 under them.');
+
+  /* ----- advanced topics ----- */
+  }else if(topic==='elseif'){
+    var sc=ri(r,40,99);
+    title=pre+'Else if: more than two choices';
+    P('Sometimes two choices are not enough. Add else if to check more questions, one after another. The computer asks them from the top and stops at the first one that is true.');
+    C('score = '+sc+'\nif score >= 90:\n    show "A"\nelse if score >= 70:\n    show "B"\nelse:\n    show "C"',IDEA);
+    PT([['if score >= 90','The first question. If the answer is yes, the computer shows A and skips everything below.'],['else if score >= 70','Only asked when the first answer was no.'],['else','Runs when every question above was no.']]);
+    OUT('score is '+sc+', so the program shows: '+(sc>=90?'A':sc>=70?'B':'C'));
+    P('The spelling changes. Python writes elif, Ruby writes elsif, and C and JavaScript write else if. The idea is exactly the same.');
+    TIP('Put the most specific question first. If you ask score >= 70 first, a score of 95 would stop there and never reach the A.');
+  }else if(topic==='whileloop'){
+    title=pre+'While loops: repeat until something changes';
+    P('A for loop repeats a set number of times. A while loop keeps repeating as long as its condition stays true. Use it when you do not know in advance how many rounds you need.');
+    C('x = 1\nwhile x < 50:\n    x = x * 2\nshow x',IDEA);
+    PT([['while x < 50','The condition. It is checked before every round. If it is false, the loop ends.'],['x = x * 2','The body. It changes x, which moves the loop toward its end.'],['show x','Runs once, after the loop has finished.']]);
+    OUT('x becomes 2, 4, 8, 16, 32, 64. Then 64 < 50 is false, so the loop stops and the program shows 64.');
+    TIP('If nothing inside the loop changes the condition, the loop never ends. That is an infinite loop.');
+  }else if(topic==='strings2'){
+    title=pre+'Text: positions and pieces';
+    P('Every character in a string has a position number, called an index. Counting starts at 0. The length of a string is how many characters it has.');
+    C('text = "coding"\ntext[0]       is "c"\ntext[5]       is "g"\nlength(text)  is 6\nupper(text)   is "CODING"\ntext + "!"    is "coding!"','The idea (the exact spelling differs by language)');
+    PT([['text[0]','The first character. The position goes inside square brackets in many languages.'],['length(text)','How many characters there are. The last index is always length minus 1.'],['upper(text)','A copy with every letter as a capital.'],['text + "!"','Joining two strings makes a longer string.']]);
+    P('You can also take a piece of a string. Many languages let you give a start and an end position. The end is not included, so the first 3 characters of "coding" are "cod".');
+    TIP('The last index is length minus 1. A string of 6 characters has indexes 0 to 5.');
+  }else if(topic==='math2'){
+    title=pre+'More math: division, remainders and powers';
+    P('Dividing whole numbers gives two useful answers: how many whole times one number fits into another, and what is left over. The left-over part is called the remainder, and the sign for it is %.');
+    C('17 // 5   is 3    (5 fits into 17 three whole times)\n17 % 5    is 2    (3 * 5 is 15, and 2 is left over)\n2 ** 3    is 8    (2 times 2 times 2)\n10 % 2    is 0    (10 is even)\n7 % 2     is 1    (7 is odd)','The idea (spellings vary a little)');
+    PT([['//','Whole-number division. In C and Java, a plain / does this when both numbers are whole.'],['%','The remainder.'],['**','A power. Some languages write pow(2, 3) instead.']]);
+    TIP('A number is even when n % 2 is 0. Programmers also use % to repeat things every 3rd or every 10th time.');
+  }else if(topic==='dict'){
+    title=pre+'Dictionaries: look things up by key';
+    P('A list finds values by position. A dictionary finds values by name. Each entry is a pair: a key, which is the name you look up, and a value, which is what you get back.');
+    C('ages = {"Ann": 12, "Bo": 9}\nages["Bo"]        is 9\nages["Di"] = 7    adds a new pair\nages["Bo"] = 10   changes Bo to 10','The idea (many languages use curly brackets)');
+    PT([['{ }','Curly brackets hold the whole dictionary.'],['"Ann": 12','One pair. The key is "Ann" and the value is 12.'],['ages["Bo"]','Looks up the value for the key "Bo".']]);
+    P('Keys are unique. If you store a value under a key that already exists, the old value is replaced. Some languages call dictionaries maps or hash tables.');
+    TIP('Use a dictionary when you want to ask “what goes with this name?”');
+  }else if(topic==='nested'){
+    title=pre+'Loops inside loops';
+    P('A loop can sit inside another loop. For every single round of the outer loop, the inner loop runs all of its rounds. This is how programs work with grids, tables and pairs.');
+    C('for i from 1 to 3:\n    for j from 1 to 2:\n        show i, j',IDEA);
+    PT([['for i from 1 to 3','The outer loop. It runs 3 times.'],['for j from 1 to 2','The inner loop. It runs 2 times for each round of the outer loop.'],['show i, j','Runs 3 * 2 = 6 times in total.']]);
+    OUT('1 1\n1 2\n2 1\n2 2\n3 1\n3 2');
+    TIP('Total rounds = outer rounds * inner rounds, unless the inner loop changes size with i.');
+  }else if(topic==='listops'){
+    title=pre+'Doing more with lists';
+    P('Lists can grow, shrink and be reordered. Most languages have a command for each job. Watch the list change line by line:');
+    C('items = [4, 8, 1]\nadd 6 to the end     items is [4, 8, 1, 6]\nremove the first     items is [8, 1, 6]\nsort the list        items is [1, 6, 8]\nsum of items is 15, biggest is 8, length is 3','The idea (each language names these differently)');
+    PT([['add','Puts a new item at the end.'],['remove','Takes an item out. Later items move down by one position.'],['sort','Puts the items in order, from smallest to biggest.'],['length','How many items the list holds.']]);
+    TIP('Sorting changes the list itself in many languages. Some give you a sorted copy instead.');
+  }else if(topic==='fn2'){
+    title=pre+'Functions with more than one input';
+    P('A function can take several inputs, separated by commas. It can also keep its own private variables, which disappear when the function ends.');
+    C('function area(w, h):\n    result = w * h\n    return result\n\narea(3, 4)   gives 12',IDEA);
+    PT([['(w, h)','Two parameters. When you call area(3, 4), w is 3 and h is 4. The order matters.'],['result','A variable that lives only inside the function. Code outside cannot see it.'],['return result','Sends the answer back to the caller.']]);
+    P('Printing and returning are different. Printing shows a value on the screen. Returning hands the value back to your code so you can use it in more math or store it.');
+    TIP('Functions that return a value are easy to test: give an input, check the output.');
+  }else if(topic==='recursion'){
+    title=pre+'Recursion: a function that calls itself';
+    P('A recursive function solves a problem by calling itself on a smaller version of the same problem. It must have a base case, which is the smallest problem it can answer directly. Without one, it never stops.');
+    C('function fact(n):\n    if n <= 1:\n        return 1\n    return n * fact(n - 1)\n\nfact(4) = 4 * fact(3)\n        = 4 * 3 * fact(2)\n        = 4 * 3 * 2 * fact(1)\n        = 4 * 3 * 2 * 1 = 24',IDEA);
+    PT([['if n <= 1','The base case. It stops the calls.'],['n * fact(n - 1)','The recursive case. The input gets smaller each time.'],['the call stack','Each waiting call is remembered until the one below it finishes.']]);
+    TIP('Write the base case first. Then make sure every recursive call moves closer to it.');
+  }else if(topic==='sorting'){
+    title=pre+'Sorting and searching';
+    P('Putting items in order is one of the oldest jobs in computing. Bubble sort is a simple way to see how it works: go from left to right, and whenever a number is bigger than the one on its right, swap them.');
+    C('list = [5, 2, 8, 1]\ncompare 5 and 2: swap   ->  [2, 5, 8, 1]\ncompare 5 and 8: keep   ->  [2, 5, 8, 1]\ncompare 8 and 1: swap   ->  [2, 5, 1, 8]\nafter ONE pass: [2, 5, 1, 8]','Bubble sort, one pass');
+    PT([['one pass','The biggest number moves all the way to the end.'],['many passes','Repeat until a pass makes no swaps.']]);
+    P('Binary search finds an item in a sorted list by always checking the middle. Look for 20 in [2, 5, 9, 14, 20, 31, 40]: check 14, which is too small, so keep the right half. Check 31, which is too big, so keep the left part. Check 20, found in 3 checks. Each check throws away half of what is left.');
+    TIP('Binary search only works when the list is already sorted.');
+  }else if(topic==='bits'){
+    title=pre+'Bits, hex and colours';
+    P('Computers can work on the individual bits of a number. AND keeps the bits that are 1 in both numbers. OR keeps bits that are 1 in either. XOR keeps bits that are different.');
+    C('12 = 1100\n10 = 1010\n12 AND 10 = 1000 = 8\n12 OR 10  = 1110 = 14\n12 XOR 10 = 0110 = 6\n5 shifted left by 2 = 20','Bit tricks');
+    PT([['AND','1 only where both bits are 1.'],['OR','1 where either bit is 1.'],['XOR','1 where the bits differ.'],['shift left','Moves every bit left. Each step doubles the number.']]);
+    P('Hexadecimal, or hex, counts with 16 digits: 0 to 9, then A to F. One hex digit is exactly 4 bits. Colours on web pages use it: #FF8000 means red FF (255), green 80 (128), blue 00 (0).');
+    TIP('FF in hex is 255, the biggest number that fits in one byte.');
+  }else if(topic==='bigo'){
+    title=pre+'How fast is your code? Big-O';
+    P('Programmers measure how the work of a program grows as its input grows. This is written with Big-O. It does not count seconds. It compares how fast the number of steps grows.');
+    C('O(1)       one step, like reading the first item\nO(log n)   halving each time, like binary search\nO(n)       one pass through the list\nO(n²)      a loop inside a loop\nO(2ⁿ)      trying every combination','From fast to slow');
+    PT([['O(1)','Constant. Does not grow with the input.'],['O(n)','Linear. Double the input, double the work.'],['O(n²)','Quadratic. Double the input, four times the work.']]);
+    TIP('Big-O ignores small details. 3n and n are both O(n). What matters is the shape of the growth.');
+  }else if(topic==='oop'){
+    title=pre+'Objects and classes';
+    P('A class is a blueprint. An object is a thing built from that blueprint. An object keeps its own data, called attributes, and has actions it can perform, called methods.');
+    C('class Dog:\n    name\n    speak():\n        show name + " says woof"\n\nd = new Dog("Rex")\nd.speak()      shows: Rex says woof',IDEA);
+    PT([['class Dog','The blueprint for every dog.'],['name','An attribute: data each dog keeps for itself.'],['speak()','A method: an action a dog can do.'],['new Dog("Rex")','Builds one object from the blueprint.']]);
+    P('Inheritance lets a new class reuse an older one. Encapsulation means an object keeps its details inside and shows only what others need.');
+    TIP('Ask: what things exist in my program, what do they know, and what can they do?');
+  }else if(topic==='errors'){
+    title=pre+'Handling errors safely';
+    P('Some mistakes cannot be spotted before the program runs, such as a user typing letters where a number is needed. Many languages let you catch these problems and respond, instead of crashing.');
+    C('try:\n    n = convert("abc") to a number\ncatch error:\n    show "That is not a number"\nfinally:\n    show "Done"',IDEA);
+    PT([['try','Run this code, and watch for errors.'],['catch','Runs only if an error happened inside try.'],['finally','Runs every time, error or not.']]);
+    P('Checking input before using it is called validation. When an error does crash a program, the message often shows a stack trace: the list of calls that led to the problem. Read it from the top.');
+    TIP('Do not catch an error and then ignore it. Silent errors are the hardest to find.');
+  }else if(topic==='stack'){
+    title=pre+'Stacks, queues and other containers';
+    P('Different jobs need different ways to store data. A stack is like a pile of plates: the last one you put on is the first one you take off. A queue is like a line at a shop: the first in line is served first.');
+    C('stack: push 1, push 2, push 3, pop  ->  gives 3\nqueue: add 1, add 2, add 3, remove  ->  gives 1','Last in first out, and first in first out');
+    PT([['stack','Last in, first out. Used for undo buttons and for tracking function calls.'],['queue','First in, first out. Used for print jobs and waiting lines.'],['set','Holds each value once, with no repeats.'],['tree','Items with children below them, like folders.'],['graph','Nodes joined by edges, like a map of roads.']]);
+    TIP('Pick the container that matches how you will use the data.');
+  }else if(topic==='algo'){
+    title=pre+'Thinking like a problem solver';
+    P('Good programmers do not start by typing. They understand the problem, write the steps in plain words, solve a tiny example by hand, then turn the steps into code and test them. The plain-word steps are called pseudocode.');
+    C('biggest = first item of the list\nfor each item in the list:\n    if item > biggest:\n        biggest = item\nshow biggest','Finding the biggest number');
+    PT([['biggest = first item','Start with a guess that is already in the list.'],['for each item','Look at every item once.'],['if item > biggest','Found a bigger one? Remember it.']]);
+    P('Test with normal cases, and also with edge cases: an empty list, a list with one item, or very big numbers. Many bugs hide there.');
+    TIP('Solve a small example by hand first. If you cannot do it by hand, you cannot code it yet.');
+  }else if(topic==='types'){
+    title=pre+'Types, memory and surprises';
+    P('Every value has a type. Mixing types can give surprises. In many languages, adding the numbers 5 and 3 gives 8, but joining the texts "5" and "3" gives "53". Converting between them is called casting or parsing.');
+    C('5 + 3          gives 8\n"5" + "3"      gives "53"\nparse("42")    gives the number 42\n0.1 + 0.2      gives 0.30000000000000004 in most languages','Surprises');
+    PT([['static typing','Types are checked before the program runs.'],['dynamic typing','Types are checked while it runs.'],['floating point','Decimal numbers can have tiny rounding errors.'],['overflow','A number too big for its storage can wrap around.'],['null','A special value that means no value.']]);
+    TIP('When a result looks strange, print the type of each value. It is often the clue.');
+  }else if(topic==='concur'){
+    title=pre+'Many things at once, and the network';
+    P('Modern programs do many things at the same time: loading data, drawing the screen and listening for clicks. This is called concurrency. A thread is one path of work, and async code lets a program wait for slow tasks without freezing.');
+    C('{"name": "Ann", "age": 12, "langs": ["Python", "Go"]}','JSON: a text format that programs use to share data');
+    PT([['race condition','Two tasks change the same data, and the result depends on timing.'],['deadlock','Tasks wait on each other forever.'],['API','A set of rules for how programs talk to each other.'],['HTTP','How browsers and servers send requests and pages.'],['server','A computer that answers requests from other computers.']]);
+    TIP('Shared data that many tasks can change is where the trickiest bugs live.');
+  }else{
+    title=pre+'Writing code others love to read';
+    P('Working code is the start, not the finish. Great programmers write code that other people can read, test and change. Use clear names, keep functions small, and add comments for the why.');
+    C('# hard to read\nd = p * q - r\n\n# easier to read\nprofit = price * quantity - cost','Before and after');
+    PT([['clear names','profit tells a reader much more than d.'],['small functions','Each function does one job, so it is easy to test.'],['tests','Small checks that tell you when something breaks.'],['version control','Git saves every version, so you can go back.'],['code review','Another person reads your change and gives feedback.']]);
+    TIP('The best way to improve now is to build small projects and read other people\'s code.');
+  }
+  if(review)TIP('Level-up tip: '+LEVELUP[(level*3)%LEVELUP.length]);
+  return {topic:topic,title:title,blocks:b};
+}
+function genLesson(L,level){
+  var ft=topicOf(level),les=lessonBody(L,ft.topic,level,ft.review),st=stageOf(level);
+  if((level-1)%100===0)les.blocks.unshift({k:'stage',l:'Stage '+stageNo(level)+': '+st.name+' ('+st.diff+')',t:st.msg});
+  les.review=ft.review;
+  return les;
+}
+
+if(typeof module!=='undefined'){module.exports={LANGS:LANGS,genLevel:genLevel,genLesson:genLesson,topicOf:topicOf,stageOf:stageOf,stageNo:stageNo,diffName:diffOf&&diffName,diffOf:diffOf,wlines:wlines,STAGES:STAGES,INTRO:INTRO,PLAN:PLAN,checkWrite:checkWrite,hintWrite:hintWrite,expectedText:expectedText,norm2:norm2};}
+
+</script>
+<script>
+(function(){
+  var TOTAL=1000;
+  var $=function(s){return document.querySelector(s);};
+  var store={get:function(k){try{return localStorage.getItem(k);}catch(e){return null;}},set:function(k,v){try{localStorage.setItem(k,v);}catch(e){}}};
+  var lang=null, done={}, sel=null, Q=null;
+
+  function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;}
+
+  /* ---------- language picker ---------- */
+  var list=$('#langs');
+  LANGS.forEach(function(L,i){
+    var li=el('li'),b=el('button','lang');b.type='button';b.dataset.i=i;
+    b.appendChild(el('b',null,L.n));b.appendChild(el('span',null,L.ex));
+    li.appendChild(b);list.appendChild(li);
+  });
+  list.addEventListener('click',function(e){var b=e.target.closest('.lang');if(!b)return;chooseLang(LANGS[+b.dataset.i]);});
+
+  function showPick(){$('#path').hidden=true;$('#pick').hidden=false;window.scrollTo(0,0);}
+  function chooseLang(L){store.set('grelik:lang',L.n);openPath(L);}
+
+  /* ---------- path of 1000 squares ---------- */
+  function stageHTML(n){
+    if((n-1)%100!==0)return '';var s=stageOf(n);
+    return '<div class="stg"><b>Stage '+stageNo(n)+' · '+s.name+'</b><span>Levels '+s.from+'–'+s.to+' · '+s.diff+'</span><p>'+s.msg+'</p></div>';
+  }
+  function levelHTML(n){
+    var d=done[n],x=Math.round(Math.sin(n*0.85)*64),isDone=d!==undefined;
+    var inner=isDone?'<span class="ct">Completed</span>'+(d>=0?'<span class="sc">'+d+'/10</span>':''):'<span class="num">'+n+'</span>';
+    return '<div class="lv" id="lv'+n+'" style="--x:'+x+'px"><div class="bubble" hidden>'+
+      '<button class="b skip" type="button" data-act="skip" data-n="'+n+'">Skip</button>'+
+      '<button class="b go" type="button" data-act="start" data-n="'+n+'">Start</button></div>'+
+      '<button class="sq'+(isDone?' done':'')+'" type="button" data-n="'+n+'"'+(isDone?' disabled aria-label="Level '+n+' completed"':' aria-label="Level '+n+'"')+'>'+inner+'</button></div>';
+  }
+  function saveDone(){store.set('grelik:done:'+lang.n,JSON.stringify(done));}
+  function updProg(){$('#lprog').textContent=Object.keys(done).length+' / '+TOTAL+' completed';}
+  function firstOpen(){for(var n=1;n<=TOTAL;n++){if(done[n]===undefined)return n;}return TOTAL;}
+  function openPath(L){
+    lang=L;sel=null;
+    try{done=JSON.parse(store.get('grelik:done:'+L.n)||'{}')||{};}catch(e){done={};}
+    $('#lname').textContent=L.n;updProg();
+    var h='';for(var n=1;n<=TOTAL;n++)h+=stageHTML(n)+levelHTML(n);
+    $('#levels').innerHTML=h;
+    $('#pick').hidden=true;$('#path').hidden=false;$('#menu').hidden=true;
+    var f=document.getElementById('lv'+firstOpen());
+    window.scrollTo(0,0);
+    if(f)requestAnimationFrame(function(){f.scrollIntoView({block:'center'});});
+  }
+  function closeBubble(){if(sel!==null){var e=document.getElementById('lv'+sel);if(e)e.querySelector('.bubble').hidden=true;sel=null;}}
+  function toggle(n){
+    var same=sel===n;closeBubble();if(same)return;sfx('tap');
+    sel=n;var e=document.getElementById('lv'+n);e.querySelector('.bubble').hidden=false;
+  }
+  function refresh(n){var e=document.getElementById('lv'+n);if(!e)return;var t=document.createElement('div');t.innerHTML=levelHTML(n);e.replaceWith(t.firstChild);updProg();}
+  function skip(n){sfx('skip');closeBubble();done[n]=-1;saveDone();refresh(n);}
+
+  $('#levels').addEventListener('click',function(e){
+    var a=e.target.closest('[data-act]');
+    if(a){var n=+a.dataset.n;if(a.dataset.act==='skip')skip(n);else{closeBubble();sfx('start');startQuiz(n,0);}return;}
+    var sq=e.target.closest('.sq');if(!sq||sq.disabled)return;toggle(+sq.dataset.n);
+  });
+  document.addEventListener('click',function(e){
+    if(!e.target.closest('.lv'))closeBubble();
+    if(!e.target.closest('.mwrap')){$('#menu').hidden=true;$('#gear').setAttribute('aria-expanded','false');}
+  });
+
+  /* ---------- settings ---------- */
+  $('#gear').addEventListener('click',function(){
+    var m=$('#menu');m.hidden=!m.hidden;this.setAttribute('aria-expanded',m.hidden?'false':'true');
+  });
+  $('#chg').addEventListener('click',function(){$('#menu').hidden=true;$('#gear').setAttribute('aria-expanded','false');showPick();});
+
+  /* ---------- quiz ---------- */
+  function startQuiz(n,attempt,replay){
+    Q={n:n,attempt:attempt,items:genLevel(lang,n,attempt),i:0,score:0,res:[],ans:[],answered:false};
+    $('#quiz').hidden=false;document.body.style.overflow='hidden';
+    if(replay)render();else showLesson();
+  }
+  function showLesson(){
+    var body=$('#qbody'),foot=$('#qfoot'),ls=genLesson(lang,Q.n);
+    body.textContent='';foot.textContent='';Q.i=0;Q.res=[];segs();
+    $('#qmeta').textContent='Level '+Q.n+' · '+diffName(Q.n)+' · '+lang.n+' · Lesson';
+    var w=el('div','lesson');w.appendChild(el('h2',null,ls.title));
+    ls.blocks.forEach(function(b){
+      if(b.k==='p'){w.appendChild(el('p',null,b.t));}
+      else if(b.k==='code'){if(b.l)w.appendChild(el('div','llab',b.l));w.appendChild(el('pre','lcode',b.t));}
+      else if(b.k==='parts'){
+        w.appendChild(el('div','llab','What each part means'));
+        var ul=el('ul','parts');
+        b.t.forEach(function(p){var li=el('li');li.appendChild(el('code',null,p[0]));li.appendChild(el('span',null,p[1]));ul.appendChild(li);});
+        w.appendChild(ul);
+      }else if(b.k==='out'){var o=el('div','lout');o.appendChild(el('small',null,b.l));o.appendChild(el('pre',null,b.t));w.appendChild(o);}
+      else if(b.k==='stage'){var sg=el('div','lstage');sg.appendChild(el('small',null,b.l));sg.appendChild(el('p',null,b.t));w.appendChild(sg);}
+      else if(b.k==='tip'){var t=el('div','ltip');t.appendChild(el('b',null,'Tip'));t.appendChild(el('span',null,b.t));w.appendChild(t);}
+    });
+    body.appendChild(w);body.scrollTop=0;
+    var go=el('button','cta','Start the quiz');go.type='button';go.addEventListener('click',function(){render();body.scrollTop=0;});
+    foot.appendChild(go);
+  }
+  function leave(){$('#quiz').hidden=true;document.body.style.overflow='';Q=null;}
+  $('#qx').addEventListener('click',leave);
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'){if(!$('#quiz').hidden)leave();else{$('#menu').hidden=true;closeBubble();}}});
+
+  function segs(){
+    var s=$('#segs');s.textContent='';
+    for(var k=0;k<10;k++){var i=el('i',Q.res[k]===true?'ok':Q.res[k]===false?'no':(k===Q.i&&Q.i<10?'cur':''));s.appendChild(i);}
+  }
+  function render(){
+    var body=$('#qbody'),foot=$('#qfoot');body.textContent='';foot.textContent='';
+    segs();
+    if(Q.i>=10){return result();}
+    var it=Q.items[Q.i];Q.answered=false;
+    $('#qmeta').textContent='Level '+Q.n+' · '+diffName(Q.n)+' · '+lang.n+' · Quiz '+(Q.i+1)+' of 10';
+    body.appendChild(el('p','qtext',it.q));
+    if(it.k==='tf'){
+      var g=el('div','opts tf');
+      ['True','False'].forEach(function(t,k){var b=el('button','opt',t);b.type='button';b.addEventListener('click',function(){grade(it,k===0?true:false,g);});g.appendChild(b);});
+      body.appendChild(g);
+    }else if(it.k==='mc'){
+      var g2=el('div','opts');
+      var codey=/[(){};=<>\[\]:]/.test(it.opts[0])&&it.opts.every(function(o){return o.length<70;})&&/^(Which line|Which keyword)/.test(it.q);
+      it.opts.forEach(function(t,k){var b=el('button','opt'+(codey?' code':''),t);b.type='button';b.addEventListener('click',function(){grade(it,k,g2);});g2.appendChild(b);});
+      body.appendChild(g2);
+    }else{
+      var ta=el('textarea');ta.id='ans';ta.rows=it.lines.length>1?5:3;ta.spellcheck=false;ta.autocapitalize='off';ta.autocomplete='off';ta.setAttribute('autocorrect','off');
+      ta.setAttribute('aria-label','Your code');ta.placeholder='Type your code here';
+      body.appendChild(ta);
+      var c=el('button','cta','Check');c.type='button';
+      c.dataset.ns='1';c.addEventListener('click',function(){grade(it,ta.value,ta);});
+      ta.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();c.click();}});
+      foot.appendChild(c);setTimeout(function(){try{ta.focus({preventScroll:true});}catch(e){}},50);
+    }
+  }
+  function grade(it,ans,ctl){
+    if(Q.answered)return;
+    var ok,fb=el('div','fb pop'),body=$('#qbody'),foot=$('#qfoot');
+    if(it.k==='write'){
+      if(!String(ans).trim()){ctl.focus();return;}
+      ok=checkWrite(it,ans);ctl.readOnly=true;
+    }else if(it.k==='tf'){ok=(ans===it.a);}else{ok=(ans===it.a);}
+    sfx(ok?'correct':'wrong');Q.answered=true;Q.res[Q.i]=ok;Q.ans[Q.i]=ans;if(ok)Q.score++;segs();
+    if(it.k==='tf'||it.k==='mc'){
+      var bs=ctl.querySelectorAll('.opt');
+      bs.forEach(function(b,k){b.disabled=true;
+        var isRight=it.k==='tf'?((k===0)===it.a):(k===it.a);
+        var picked=it.k==='tf'?((k===0)===ans):(k===ans);
+        if(isRight)b.classList.add('right');else if(picked)b.classList.add('wrong');});
+    }
+    fb.classList.add(ok?'ok':'no');
+    fb.appendChild(el('small',null,'Grelik coach'));
+    fb.appendChild(el('h3',null,ok?pickMsg(['Correct!','Nice one!','Exactly right!','You got it!']):pickMsg(['Not quite.','Almost there.','Not this time.'])));
+    if(!ok){
+      if(it.k==='write'){fb.appendChild(el('p',null,hintWrite(it,ans)));fb.appendChild(el('pre',null,expectedText(it)));}
+      else if(it.k==='mc'){fb.appendChild(el('p',null,'The answer is: '+it.opts[it.a]));}
+      else{fb.appendChild(el('p',null,'The statement is '+(it.a?'true':'false')+'.'));}
+    }
+    body.appendChild(fb);
+    foot.textContent='';
+    var nx=el('button','cta'+(ok?' green':''),Q.i<9?'Continue':'See result');nx.type='button';
+    nx.addEventListener('click',function(){Q.i++;render();body.scrollTop=0;});
+    foot.appendChild(nx);nx.focus({preventScroll:true});
+    fb.scrollIntoView({block:'nearest'});
+  }
+  function pickMsg(a){return a[Math.floor(Math.random()*a.length)];}
+  function finishLevel(){
+    sfx('done');var n=Q.n,sc=Q.score;leave();done[n]=sc;saveDone();refresh(n);
+    var nx=document.getElementById('lv'+firstOpen());if(nx)nx.scrollIntoView({block:'center',behavior:'smooth'});
+  }
+  function result(){
+    var body=$('#qbody'),foot=$('#qfoot'),perfect=Q.score===10;
+    body.textContent='';foot.textContent='';body.scrollTop=0;segs();
+    $('#qmeta').textContent='Level '+Q.n+' · '+diffName(Q.n)+' · '+lang.n+' · Result';
+    sfx(perfect?'win':'lose');
+    var r=el('div','res');
+    r.appendChild(el('div','big',Q.score+'/10'));
+    r.appendChild(el('h2',null,perfect?'Perfect score!':'Good try!'));
+    r.appendChild(el('p',null,perfect?'Every answer was correct. Tap Leave to turn this square green, or Try again to play the same quiz once more.':'Tap View to see your answers and the correct ones. Tap Leave to turn this square green, or Try again to play the same quiz once more.'));
+    body.appendChild(r);
+    var row=el('div','row tri');
+    var lv=el('button','cta ghost','Leave');lv.type='button';lv.addEventListener('click',finishLevel);
+    var ta=el('button','cta','Try again');ta.type='button';ta.addEventListener('click',function(){startQuiz(Q.n,Q.attempt,true);});
+    row.appendChild(lv);row.appendChild(ta);
+    if(!perfect){var vw=el('button','cta ghost','View');vw.type='button';vw.addEventListener('click',viewAnswers);row.appendChild(vw);}
+    foot.appendChild(row);
+  }
+  function viewAnswers(){
+    var body=$('#qbody'),foot=$('#qfoot');
+    body.textContent='';foot.textContent='';body.scrollTop=0;
+    $('#qmeta').textContent='Level '+Q.n+' · '+lang.n+' · Your answers';
+    var w=el('div','review');
+    Q.items.forEach(function(it,k){
+      var ok=Q.res[k]===true,card=el('div','rv '+(ok?'ok':'no'));
+      var head=el('div','rvh');head.appendChild(el('span','rvn','Quiz '+(k+1)));head.appendChild(el('span','rvs',ok?'Correct':'Not correct'));
+      card.appendChild(head);card.appendChild(el('p','rvq',it.q));
+      var yours,right;
+      if(it.k==='tf'){yours=Q.ans[k]===true?'True':'False';right=it.a?'True':'False';}
+      else if(it.k==='mc'){yours=it.opts[Q.ans[k]];right=it.opts[it.a];}
+      else{yours=String(Q.ans[k]===undefined?'':Q.ans[k]);right=expectedText(it);}
+      var l1=el('div','rvl','What you answered');card.appendChild(l1);card.appendChild(el('pre','rva',yours));
+      if(!ok){card.appendChild(el('div','rvl','Correct answer'));card.appendChild(el('pre','rva good',right));}
+      w.appendChild(card);
+    });
+    body.appendChild(w);
+    var bk=el('button','cta','Back');bk.type='button';bk.addEventListener('click',result);foot.appendChild(bk);
+  }
+
+  /* ---------- background photo ---------- */
+  var BGK='grelik:bg',toastT=null;
+  function toast(msg){var t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(function(){t.hidden=true;},3800);}
+  function applyBg(url){
+    var b=$('#bgimg');
+    if(url){b.style.backgroundImage='url("'+url+'")';document.body.classList.add('hasbg');$('#bgreset').hidden=false;}
+    else{b.style.backgroundImage='';document.body.classList.remove('hasbg');$('#bgreset').hidden=true;}
+  }
+  function closeMenu(){$('#menu').hidden=true;$('#gear').setAttribute('aria-expanded','false');}
+  $('#bgbtn').addEventListener('click',function(){closeMenu();$('#bgfile').value='';$('#bgfile').click();});
+  $('#bgreset').addEventListener('click',function(){closeMenu();applyBg(null);try{localStorage.removeItem(BGK);}catch(e){}toast('Background removed.');});
+  $('#bgfile').addEventListener('change',function(){
+    var f=this.files&&this.files[0];if(!f)return;
+    if(f.type&&f.type.indexOf('image/')!==0){toast('Please choose a photo (JPG, PNG, WebP or GIF).');return;}
+    var u=URL.createObjectURL(f),img=new Image();
+    img.onload=function(){
+      var max=1600,w=img.naturalWidth,h=img.naturalHeight,k=Math.min(1,max/Math.max(w,h)),url=null;
+      try{
+        var c=document.createElement('canvas');c.width=Math.max(1,Math.round(w*k));c.height=Math.max(1,Math.round(h*k));
+        var x=c.getContext('2d');x.fillStyle='#ffffff';x.fillRect(0,0,c.width,c.height);x.drawImage(img,0,0,c.width,c.height);
+        url=c.toDataURL('image/jpeg',0.82);
+      }catch(e){url=null;}
+      URL.revokeObjectURL(u);
+      if(!url){toast('That photo could not be used. Try a different one.');return;}
+      applyBg(url);
+      var saved=true;try{localStorage.setItem(BGK,url);}catch(e){saved=false;}
+      toast(saved?'Background changed.':'Background changed. It could not be saved, so it will reset next time.');
+    };
+    img.onerror=function(){URL.revokeObjectURL(u);toast('That photo could not be opened. Try a JPG or PNG.');};
+    img.src=u;
+  });
+  applyBg(store.get(BGK));
+
+  /* ---------- sound effects (synthesised, no files) ---------- */
+  var SFXK='grelik:sfx',sfxOn=store.get(SFXK)!=='0',actx=null;
+  function ac(){
+    if(actx)return actx;
+    try{var C=window.AudioContext||window.webkitAudioContext;if(C)actx=new C();}catch(e){actx=null;}
+    return actx;
+  }
+  var SFX={
+    tap:[[620,.04,'triangle',.05]],
+    start:[[440,.07,'triangle',.08],[660,.07,'triangle',.08],[880,.12,'triangle',.08]],
+    correct:[[660,.08,'sine',.1],[990,.16,'sine',.1]],
+    wrong:[[240,.12,'square',.05],[170,.22,'square',.05]],
+    win:[[523,.1,'triangle',.1],[659,.1,'triangle',.1],[784,.1,'triangle',.1],[1047,.3,'triangle',.1]],
+    lose:[[392,.12,'triangle',.08],[330,.12,'triangle',.08],[262,.25,'triangle',.08]],
+    done:[[523,.08,'sine',.1],[784,.08,'sine',.1],[1047,.2,'sine',.1]],
+    skip:[[360,.07,'triangle',.07],[270,.12,'triangle',.07]],
+    tick:[[880,.05,'sine',.06]],
+    run:[[330,.08,'sawtooth',.04],[495,.08,'sawtooth',.04],[660,.14,'sawtooth',.04]]
+  };
+  function sfx(name){
+    if(!sfxOn)return;var c=ac(),seq=SFX[name];if(!c||!seq)return;
+    try{
+      if(c.state==='suspended')c.resume();
+      var t=c.currentTime+0.005;
+      seq.forEach(function(n){
+        var o=c.createOscillator(),g=c.createGain();
+        o.type=n[2];o.frequency.value=n[0];
+        g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(n[3],t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+n[1]);
+        o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+n[1]+0.02);t+=n[1]*0.9;
+      });
+    }catch(e){}
+  }
+  function sfxLabel(){$('#sfxbtn').textContent='Sound effects: '+(sfxOn?'On':'Off');$('#sfxbtn').setAttribute('aria-pressed',sfxOn?'true':'false');}
+  $('#sfxbtn').addEventListener('click',function(){
+    sfxOn=!sfxOn;store.set(SFXK,sfxOn?'1':'0');sfxLabel();
+    if(sfxOn)sfx('correct');toast(sfxOn?'Sound effects are on.':'Sound effects are off.');
+  });
+  sfxLabel();
+  document.addEventListener('click',function(e){
+    var b=e.target.closest&&e.target.closest('button');
+    if(!b||b.id==='sfxbtn'||b.dataset.ns||b.classList.contains('opt')||b.classList.contains('b')||b.classList.contains('sq'))return;
+    sfx('tap');
+  },true);
+
+  /* ---------- Codepad: projects, editor, and the Run preview ---------- */
+  var PADK='grelik:pad',pad={projects:[]},cur=null,pendDel=null,runTimers=[];
+  function loadPad(){try{var o=JSON.parse(store.get(PADK)||'null');if(o&&Array.isArray(o.projects))pad=o;}catch(e){}}
+  function savePad(){store.set(PADK,JSON.stringify(pad));}
+  function langByName(n){for(var i=0;i<LANGS.length;i++)if(LANGS[i].n===n)return LANGS[i];return LANGS[0];}
+  var CMT={'C':'/* {c} */','PHP':'// {c}','HTML':'<!-- {c} -->','CSS':'/* {c} */','Clojure':'; {c}','OCaml':'(* {c} *)','Smalltalk':'"{c}"'};
+  function cmtTpl(L){return CMT[L.n]||((L.cs||'//')+' {c}');}
+  function starter(L){
+    var c=cmtTpl(L).replace('{c}','My first '+L.n+' project');
+    return c+'\n'+L.say[0].replace(/\{t\}/g,'Hello, World!')+'\n';
+  }
+  function slug(s){return (String(s).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')||'project');}
+  function ago(t){var m=Math.round((Date.now()-t)/60000);if(m<1)return 'just now';if(m<60)return m+' min ago';var h=Math.round(m/60);if(h<24)return h+' h ago';return Math.round(h/24)+' d ago';}
+  function nLines(s){return s.length?s.replace(/\n$/,'').split('\n').length:0;}
+
+  /* how each language really gets run: [name, kind, command ({f}=file, {b}=program), tool, runtime] */
+  var RUNS=[
+   ['Python','interp','python3 {f}','the Python interpreter'],['JavaScript','interp','node {f}','Node.js (the JavaScript engine)'],
+   ['PHP','interp','php {f}','the PHP interpreter'],['Ruby','interp','ruby {f}','the Ruby interpreter'],['R','interp','Rscript {f}','the R interpreter'],
+   ['MATLAB','interp','matlab -batch "run(\'{f}\')"','MATLAB'],['Perl','interp','perl {f}','the Perl interpreter'],['Lua','interp','lua {f}','the Lua interpreter'],
+   ['Julia','interp','julia {f}','Julia'],['Bash','interp','bash {f}','the Bash shell'],['Tcl','interp','tclsh {f}','the Tcl interpreter'],
+   ['PowerShell','interp','pwsh {f}','PowerShell'],['Lisp','interp','sbcl --script {f}','the Lisp system'],['Scheme','interp','guile {f}','the Scheme interpreter'],
+   ['Prolog','interp','swipl {f}','the Prolog system'],['Racket','interp','racket {f}','Racket'],['Smalltalk','interp','gst {f}','the Smalltalk system'],
+   ['Elixir','vm','elixir {f}','the Elixir compiler','the Erlang VM (BEAM)'],['Mojo','interp','mojo {f}','the Mojo tool'],
+   ['C','compiled','gcc {f} -o {b} && ./{b}','a C compiler (gcc)'],['C++','compiled','g++ {f} -o {b} && ./{b}','a C++ compiler (g++)'],
+   ['Go','compiled','go build {f} && ./{b}','the Go compiler'],['Rust','compiled','rustc {f} && ./{b}','the Rust compiler (rustc)'],
+   ['Swift','compiled','swiftc {f} -o {b} && ./{b}','the Swift compiler'],['Haskell','compiled','ghc {f} -o {b} && ./{b}','the Haskell compiler (GHC)'],
+   ['Fortran','compiled','gfortran {f} -o {b} && ./{b}','a Fortran compiler'],['COBOL','compiled','cobc -x {f} -o {b} && ./{b}','a COBOL compiler'],
+   ['Pascal','compiled','fpc {f} && ./{b}','the Free Pascal compiler'],['Zig','compiled','zig build-exe {f} && ./{b}','the Zig compiler'],
+   ['Nim','compiled','nim c -r {f}','the Nim compiler'],['Crystal','compiled','crystal build {f} && ./{b}','the Crystal compiler'],
+   ['Ada','compiled','gnatmake {f} && ./{b}','the Ada compiler (GNAT)'],['D','compiled','dmd {f} && ./{b}','the D compiler'],
+   ['OCaml','compiled','ocamlfind ocamlopt {f} -o {b} && ./{b}','the OCaml compiler'],['Objective-C','compiled','clang {f} -o {b} && ./{b}','the Clang compiler'],
+   ['Dart','compiled','dart compile exe {f} && ./{b}','the Dart compiler'],
+   ['Java','vm','javac {f} && java {b}','the Java compiler (javac)','the Java Virtual Machine (JVM)'],['C#','vm','dotnet run','the C# compiler','the .NET runtime (CLR)'],
+   ['Kotlin','vm','kotlinc {f} && kotlin {b}','the Kotlin compiler','the Java Virtual Machine (JVM)'],['Scala','vm','scala {f}','the Scala compiler','the Java Virtual Machine (JVM)'],
+   ['Groovy','vm','groovy {f}','the Groovy compiler','the Java Virtual Machine (JVM)'],['Clojure','vm','clojure -M {f}','the Clojure compiler','the Java Virtual Machine (JVM)'],
+   ['F#','vm','dotnet fsi {f}','the F# compiler','the .NET runtime (CLR)'],['Visual Basic','vm','dotnet run','the Visual Basic compiler','the .NET runtime (CLR)'],
+   ['Erlang','vm','erlc {f} && erl -noshell','the Erlang compiler','the Erlang VM (BEAM)'],
+   ['TypeScript','transpile','tsc {f} && node {b}','the TypeScript compiler (tsc)','Node.js'],['Elm','transpile','elm make {f}','the Elm compiler','your web browser'],
+   ['HTML','browser','open {f}','your web browser'],['CSS','browser','open index.html','your web browser'],['SQL','query','sqlite3 data.db < {f}','a database engine (like SQLite)']
+  ];
+  var RUN={};RUNS.forEach(function(r){RUN[r[0]]={k:r[1],cmd:r[2],tool:r[3],vm:r[4]};});
+
+  /* ---- read the program: only lines shaped like the lessons' examples are understood ---- */
+  var IDN='([A-Za-z_][A-Za-z0-9_]*)',VAL='(-?\\d+(?:\\.\\d+)?|"[^"]*"|\'[^\']*\'|[A-Za-z_][A-Za-z0-9_]*)';
+  function esc(s){return s.replace(/[.*+?^${}()|[\]\\\/]/g,'\\$&');}
+  function mkRx(tpl,L){
+    var parts=tpl.split(/(\{[tnvNUc]\})/),out='';
+    parts.forEach(function(p,i){
+      if(/^\{[tnvNUc]\}$/.test(p)){var k=p.charAt(1);out+=k==='t'||k==='c'?'(.*?)':k==='v'?VAL:IDN;return;}
+      if(!p)return;
+      var pieces=p.split(/(\s+)/),s='';
+      pieces.forEach(function(q,j){
+        if(/^\s+$/.test(q)){
+          var l=(pieces[j-1]||'').slice(-1),r=(pieces[j+1]||'').charAt(0);
+          var prevTok=j===0&&i>0,nextTok=j===pieces.length-1&&i<parts.length-1;
+          var lw=/\w/.test(l)||(!l&&prevTok),rw=/\w/.test(r)||(!r&&nextTok);
+          s+=(lw&&rw)?'\\s+':'\\s*';
+        }else s+=esc(q);
+      });out+=s;
+    });
+    var ci=/^(COBOL|Pascal|Ada|Fortran|Visual Basic|SQL|Smalltalk)$/.test(L.n)?'i':'';
+    return new RegExp('^\\s*'+out+'\\s*$',ci);
+  }
+  function stripQ(v){var m=/^(["'])(.*)\1$/.exec(v);return m?m[2]:v;}
+  function analyze(L,code){
+    var res={out:[],vars:[],lines:[],unknown:[],n:0};
+    var says=L.say.map(function(t){return {rx:mkRx(t,L),pre:t.split('{t}')[0].trim(),vrx:mkRx(t.replace(/["']?\{t\}["']?/,'{n}'),L)};});
+    var vrs=(L.vr||[]).map(function(t){return mkRx(t,L);});
+    var ctpl=cmtTpl(L).split('{c}'),cpre=ctpl[0].trim(),csuf=(ctpl[1]||'').trim();
+    var vmap={};
+    code.replace(/\n$/,'').split('\n').forEach(function(raw,idx){
+      var line=raw.trim(),no=idx+1;
+      if(!line){res.lines.push({no:no,t:'blank'});return;}
+      res.n++;
+      if(cpre&&line.indexOf(cpre)===0&&(!csuf||line.slice(-csuf.length)===csuf)){res.lines.push({no:no,t:'comment'});return;}
+      var i,m,hit=null;
+      for(i=0;i<says.length&&!hit;i++){
+        if(vrs.some(function(r){return r.test(line);}))break;
+        m=says[i].rx.exec(line);
+        if(m){hit={t:'print',text:m[1],no:no};break;}
+        m=says[i].vrx.exec(line);
+        if(m&&Object.prototype.hasOwnProperty.call(vmap,m[1])){hit={t:'print',text:vmap[m[1]],no:no,via:m[1]};break;}
+      }
+      if(hit){res.out.push(hit.text);res.lines.push(hit);return;}
+      for(i=0;i<vrs.length;i++){
+        m=vrs[i].exec(line);
+        if(m&&m.length>=3){var nm=m[1],val=stripQ(m[2]);
+          if(Object.prototype.hasOwnProperty.call(vmap,val)&&!/^["']/.test(m[2]))val=vmap[val];
+          vmap[nm]=val;res.lines.push({t:'var',name:nm,val:val,no:no});hit=true;break;}
+      }
+      if(hit)return;
+      var hint='';
+      says.forEach(function(s){if(!hint&&s.pre&&line.indexOf(s.pre)===0)hint='This looks like a show-text line, but something is off. Check the quotes, brackets and the ending.';});
+      res.lines.push({no:no,t:'unknown',src:line,hint:hint});res.unknown.push({no:no,src:line,hint:hint});
+    });
+    Object.keys(vmap).forEach(function(k){res.vars.push({n:k,v:vmap[k]});});
+    return res;
+  }
+
+  /* ---- build the story of what the computer does ---- */
+  var BOX={disk:'Disk',mem:'Memory',cpu:'Processor',screen:'Screen'};
+  function buildSteps(L,info,res,file,bin,pageMode){
+    var S=[],k=info.k,tool=info.tool;
+    function add(b,t){S.push({b:b,t:t});}
+    add('disk','The computer finds your file “'+file+'” on the disk. It is '+res.n+' line'+(res.n===1?'':'s')+' of text.');
+    if(k==='interp'){add('mem',tool.charAt(0).toUpperCase()+tool.slice(1)+' starts up. It is loaded from the disk into memory (RAM).');add('cpu','It reads your code from the top, one line at a time. The processor does what each line says.');}
+    else if(k==='compiled'){add('cpu',tool.charAt(0).toUpperCase()+tool.slice(1)+' translates your whole file into machine code, the language the processor understands.');add('disk','A new program file called “'+bin+'” is saved on the disk.');add('mem','The operating system loads “'+bin+'” into memory.');add('cpu','The processor runs the machine code, from the top, one instruction at a time.');}
+    else if(k==='vm'){add('cpu',tool.charAt(0).toUpperCase()+tool.slice(1)+' translates your file into bytecode, a small in-between language.');add('disk','The bytecode is saved as a new file on the disk.');add('mem','Then '+info.vm+' starts up in memory and loads the bytecode.');add('cpu','The virtual machine turns the bytecode into processor instructions as it goes, one line at a time.');}
+    else if(k==='transpile'){add('cpu',tool.charAt(0).toUpperCase()+tool.slice(1)+' translates your '+L.n+' into plain JavaScript.');add('disk','A new JavaScript file is saved on the disk next to yours.');add('mem',info.vm.charAt(0).toUpperCase()+info.vm.slice(1)+' loads that JavaScript file into memory.');add('cpu','The JavaScript runs, one line at a time.');}
+    else if(k==='browser'){add('mem',info.tool.charAt(0).toUpperCase()+info.tool.slice(1)+' reads the text and builds a tree of page parts in memory.');add('cpu','The processor works out the size, colour and position of every part.');}
+    else{add('mem','The database engine starts and loads the tables it needs into memory.');add('cpu','It reads your query, finds the matching data and works out the answer.');}
+    var shown=0,more=0;
+    res.lines.forEach(function(ln){
+      if(ln.t==='blank')return;if(k==='browser'&&ln.t==='unknown')return;
+      if(shown>=10){more++;return;}shown++;
+      var p='Line '+ln.no+': ';
+      if(ln.t==='comment')add('cpu',p+'a comment. It is a note for people, so the computer skips it.');
+      else if(ln.t==='var')add('mem',p+'saves '+(/^-?\d/.test(ln.val)?ln.val:'“'+ln.val+'”')+' in memory under the name “'+ln.name+'”.');
+      else if(ln.t==='print')add('cpu',p+(k==='browser'?'adds “':'prepares “')+ln.text+'” '+(ln.via?'(the value of “'+ln.via+'”) ':'')+(k==='browser'?'to the page.':k==='query'?'as a result.':'to show on the screen.'));
+      else add('cpu',p+'the preview cannot follow this line, so it is not shown here.');
+    });
+    if(more)add('cpu','…and '+more+' more line'+(more===1?'':'s')+' are handled the same way.');
+    if(res.out.length)add('screen',k==='browser'?'The page is drawn in the browser window.':k==='query'?'The answer comes back as a result table.':'The words appear on the screen.');
+    else add('screen',k==='browser'?'The page is drawn, but this preview found nothing to show.':'The program printed nothing, so the screen stays empty.');
+    add('disk','Finished. '+(k==='interp'||k==='browser'||k==='query'?'Your file on the disk did not change.':'“'+bin+'” stays on the disk, so you can run it again without translating.')+(res.vars.length?' The variables in memory are cleared.':''));
+    return S;
+  }
+  var ICON={
+    disk:'<svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>',
+    mem:'<svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="9" rx="1.5"/><path d="M7 16v3M11 16v3M15 16v3M7 10v3M11 10v3M15 10v3"/></svg>',
+    cpu:'<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg>',
+    screen:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>'};
+
+  function clearRun(){runTimers.forEach(clearTimeout);runTimers=[];}
+  function runPreview(){
+    if(!cur)return;
+    var L=langByName(cur.lang),info=RUN[L.n]||{k:'interp',cmd:'run {f}',tool:'its interpreter'};
+    var file=slug(cur.name)+L.ex,bin=slug(cur.name);
+    if(L.n==='Java')file='Main.java',bin='Main';
+    var res=analyze(L,cur.code),steps=buildSteps(L,info,res,file,bin);
+    var box=$('#runbox'),ov=$('#padrun');clearRun();box.textContent='';
+    var browser=info.k==='browser';
+    box.appendChild(el('h2',null,'If you run “'+cur.name+'”'));
+    var cmd=el('div','rcmd');cmd.appendChild(el('i',null,'$ '));
+    cmd.appendChild(document.createTextNode(info.cmd.replace(/\{f\}/g,file).replace(/\{b\}/g,bin)));box.appendChild(cmd);
+    var pc=el('div','pc');pc.id='pc';
+    ['disk','mem','cpu','screen'].forEach(function(b){
+      var d=el('div','pcb');d.dataset.b=b;d.innerHTML=ICON[b];d.appendChild(document.createTextNode(BOX[b]));
+      d.appendChild(el('small',null,b==='disk'?'files':b==='mem'?'RAM':b==='cpu'?'CPU':browser?'browser':'output'));pc.appendChild(d);
+    });
+    box.appendChild(pc);
+    var ol=el('ol','rsteps');ol.setAttribute('aria-live','polite');box.appendChild(ol);
+    var tail=el('div');tail.style.display='contents';box.appendChild(tail);
+    var rowEl=el('div','rrow');
+    var rp=el('button','cta ghost','Replay');rp.type='button';rp.dataset.ns='1';rp.addEventListener('click',function(){sfx('tap');runPreview();});
+    var cl=el('button','cta','Close');cl.type='button';cl.addEventListener('click',closeRun);
+    rowEl.appendChild(rp);rowEl.appendChild(cl);
+    ov.hidden=false;
+    var fast=false;try{fast=window.matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){}
+    function finish(){
+      var scr=el('div','rscreen'+(browser?' page':''));
+      scr.appendChild(el('small',null,browser?'Browser window':info.k==='query'?'Result':'Screen'));
+      var txt=res.out.length?res.out.join('\n'):'(nothing was shown)';
+      if(info.k==='query'&&res.out.length){txt=res.out.join('\n');}
+      scr.appendChild(document.createTextNode(txt));tail.appendChild(scr);
+      if(res.vars.length){
+        var t=el('table','rmem');t.innerHTML='<caption class="rnote" style="text-align:left;caption-side:top;padding-bottom:4px">What was in memory while the program ran</caption><thead><tr><th>Name</th><th>Value</th></tr></thead>';
+        var tb=el('tbody');res.vars.forEach(function(v){var tr=el('tr');tr.appendChild(el('td',null,v.n));tr.appendChild(el('td',null,v.v));tb.appendChild(tr);});t.appendChild(tb);tail.appendChild(t);
+      }
+      if(res.unknown.length){
+        var w=el('div','rwarn');w.appendChild(el('b',null,'Not previewed'));
+        var ul=el('ul');ul.style.margin='4px 0 0';ul.style.paddingLeft='18px';
+        res.unknown.slice(0,5).forEach(function(u){var li=el('li');li.appendChild(document.createTextNode('Line '+u.no+': '));var c=el('code',null,u.src);li.appendChild(c);if(u.hint)li.appendChild(document.createTextNode(' — '+u.hint));ul.appendChild(li);});
+        w.appendChild(ul);tail.appendChild(w);
+      }
+      var sm=el('div','rsum');sm.appendChild(el('b',null,'What changed on the computer'));
+      var u=el('ul'),made=info.k==='compiled'?['the program file “'+bin+'”']:info.k==='vm'?['a bytecode file']:info.k==='transpile'?['a JavaScript file']:[];
+      [ 'Screen: '+(res.out.length?res.out.length+' line'+(res.out.length===1?'':'s')+' shown':'nothing shown'),
+        'Memory: '+(res.vars.length?res.vars.length+' variable'+(res.vars.length===1?'':'s')+' used, then cleared':'a little space used, then cleared'),
+        'Disk: '+(made.length?'new file – '+made.join(', '):'no files created or changed')
+      ].forEach(function(x){u.appendChild(el('li',null,x));});
+      sm.appendChild(u);tail.appendChild(sm);
+      tail.appendChild(el('p','rnote','Preview only. Grelik cannot run real programs here, so this shows what would happen on a real computer, based on lines like the ones in the lessons.'));
+      tail.appendChild(rowEl);sfx('done');
+      ov.scrollTop=0;try{box.scrollTop=box.scrollHeight;}catch(e){}
+    }
+    function lightOn(b){[].forEach.call(pc.children,function(c){c.classList.toggle('on',c.dataset.b===b);});}
+    var i=0;
+    function next(){
+      if(i>=steps.length){lightOn(null);finish();return;}
+      var s=steps[i++];lightOn(s.b);
+      [].forEach.call(ol.children,function(c){c.classList.remove('cur');});
+      var li=el('li','cur');li.appendChild(el('b',null,BOX[s.b]));li.appendChild(el('span',null,s.t));ol.appendChild(li);
+      sfx('tick');try{li.scrollIntoView({block:'nearest'});}catch(e){}
+      runTimers.push(setTimeout(next,fast?0:700));
+    }
+    sfx('run');next();
+    try{cl.focus({preventScroll:true});}catch(e){}
+  }
+  function closeRun(){clearRun();$('#padrun').hidden=true;}
+
+  /* ---- screens: project list and editor ---- */
+  function openPad(){loadPad();$('#pad').hidden=false;document.body.style.overflow='hidden';showList();}
+  function closePad(){closeRun();$('#pad').hidden=true;document.body.style.overflow='';cur=null;}
+  function showList(creating){
+    cur=null;pendDel=null;
+    var body=$('#padbody'),foot=$('#padfoot');body.textContent='';foot.textContent='';
+    $('#padtitle').textContent='Codepad';
+    body.appendChild(el('p','padhint','Your own coding projects. Start a project, pick the language, write your code, then press Run to see what the computer would do.'));
+    if(creating){body.appendChild(newForm());}
+    var ul=el('ul','plist');
+    pad.projects.slice().sort(function(a,b){return b.t-a.t;}).forEach(function(p){
+      var li=el('li','pitem'),o=el('button','popen');o.type='button';o.dataset.id=p.id;
+      o.appendChild(el('b',null,p.name));o.appendChild(el('span',null,p.lang+' · '+nLines(p.code)+' line'+(nLines(p.code)===1?'':'s')+' · '+ago(p.t)));
+      o.addEventListener('click',function(){openProject(p.id);});
+      var d=el('button','pdel','Delete');d.type='button';d.dataset.ns='1';d.setAttribute('aria-label','Delete project '+p.name);
+      d.addEventListener('click',function(){
+        if(pendDel===p.id){pad.projects=pad.projects.filter(function(x){return x.id!==p.id;});savePad();showList();return;}
+        pendDel=p.id;[].forEach.call(ul.querySelectorAll('.pdel'),function(x){x.classList.remove('sure');x.textContent='Delete';});d.classList.add('sure');d.textContent='Sure?';
+      });
+      li.appendChild(o);li.appendChild(d);ul.appendChild(li);
+    });
+    if(!pad.projects.length&&!creating)body.appendChild(el('p','padhint','No projects yet. Tap “New project” to make your first one.'));
+    body.appendChild(ul);
+    if(!creating){var nb=el('button','cta','New project');nb.type='button';nb.id='padnew';nb.addEventListener('click',function(){showList(true);});foot.appendChild(nb);}
+    else{var cb=el('button','cta ghost','Cancel');cb.type='button';cb.addEventListener('click',function(){showList();});foot.appendChild(cb);}
+  }
+  function newForm(){
+    var f=el('div','pform');
+    f.appendChild(el('label',null,'Project name'));
+    var inp=el('input');inp.id='pname0';inp.type='text';inp.maxLength=40;inp.placeholder='For example: My calculator';inp.autocomplete='off';f.appendChild(inp);
+    f.appendChild(el('label',null,'Coding language'));
+    var sel=el('select');sel.id='plang0';
+    LANGS.forEach(function(L){var o=el('option',null,L.n);o.value=L.n;if(lang&&L.n===lang.n)o.selected=true;sel.appendChild(o);});
+    f.appendChild(sel);
+    var err=el('p','perr');err.hidden=true;err.setAttribute('role','alert');f.appendChild(err);
+    var mk=el('button','cta','Create project');mk.type='button';mk.id='padmake';
+    function go(){
+      var nm=inp.value.trim();
+      if(!nm){err.textContent='Please type a name for your project.';err.hidden=false;inp.focus();return;}
+      var L=langByName(sel.value),p={id:'p'+Date.now().toString(36)+Math.floor(Math.random()*1e4),name:nm,lang:L.n,code:starter(L),t:Date.now()};
+      pad.projects.push(p);savePad();sfx('start');openProject(p.id);
+    }
+    mk.addEventListener('click',go);inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();go();}});
+    f.appendChild(mk);setTimeout(function(){try{inp.focus({preventScroll:true});}catch(e){}},50);
+    return f;
+  }
+  function openProject(id){
+    var p=null;pad.projects.forEach(function(x){if(x.id===id)p=x;});if(!p)return showList();
+    cur=p;var body=$('#padbody'),foot=$('#padfoot');body.textContent='';foot.textContent='';
+    $('#padtitle').textContent='Codepad';
+    var bar=el('div','pbar'),nm=el('input','pname');nm.type='text';nm.maxLength=40;nm.value=p.name;nm.setAttribute('aria-label','Project name');
+    nm.addEventListener('input',function(){p.name=nm.value.trim()||'Untitled';p.t=Date.now();savePad();});
+    bar.appendChild(nm);bar.appendChild(el('span','plang',p.lang));body.appendChild(bar);
+    var ed=el('div','ed'),gut=el('pre','gut'),ta=el('textarea');ta.id='padcode';ta.value=p.code;ta.spellcheck=false;ta.autocapitalize='off';ta.autocomplete='off';ta.setAttribute('autocorrect','off');ta.setAttribute('aria-label','Your '+p.lang+' code');ta.wrap='off';
+    function nums(){var n=Math.max(1,ta.value.split('\n').length),s='';for(var i=1;i<=n;i++)s+=i+(i<n?'\n':'');gut.textContent=s;gut.scrollTop=ta.scrollTop;}
+    ta.addEventListener('input',function(){p.code=ta.value;p.t=Date.now();savePad();nums();});
+    ta.addEventListener('scroll',function(){gut.scrollTop=ta.scrollTop;});
+    ta.addEventListener('keydown',function(e){
+      if(e.key==='Tab'){e.preventDefault();var s=ta.selectionStart;ta.value=ta.value.slice(0,s)+'  '+ta.value.slice(ta.selectionEnd);ta.selectionStart=ta.selectionEnd=s+2;ta.dispatchEvent(new Event('input'));}
+      else if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();runBtn.click();}
+    });
+    ed.appendChild(gut);ed.appendChild(ta);body.appendChild(ed);nums();
+    body.appendChild(el('p','rnote','Saved automatically on this device. Tip: the Run preview understands show-text lines, comments and variables like the ones in the lessons.'));
+    var row=el('div','row'),bk=el('button','cta ghost','Projects');bk.type='button';bk.addEventListener('click',function(){showList();});
+    var runBtn=el('button','cta green','Run');runBtn.type='button';runBtn.id='padrunbtn';runBtn.dataset.ns='1';runBtn.addEventListener('click',function(){p.code=ta.value;savePad();runPreview();});
+    row.appendChild(bk);row.appendChild(runBtn);foot.appendChild(row);
+  }
+  $('#padbtn').addEventListener('click',function(){closeMenu();openPad();});
+  $('#padx').addEventListener('click',closePad);
+  $('#padrun').addEventListener('click',function(e){if(e.target===this)closeRun();});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'){if(!$('#padrun').hidden)closeRun();else if(!$('#pad').hidden)closePad();}});
+
+  /* ---------- start ---------- */
+  var saved=store.get('grelik:lang'),L0=null;
+  if(saved){LANGS.forEach(function(L){if(L.n===saved)L0=L;});}
+  if(L0)openPath(L0);else{$('#pick').hidden=false;}
+})();
+</script>
+</body>
+</html>
